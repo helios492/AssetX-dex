@@ -33,6 +33,7 @@ import { LottieMedium } from "@/app/components/loader";
 import ReviewTransactionModal from "@/app/components/review-transaction-modal";
 import WarningMessage from "@/app/components/warning-message";
 import SwapPoolResultModal from "@/app/components/swap-pool-result-modal";
+import axios, { AxiosResponse } from "axios";
 
 type TokenValueProps = {
   tokenValue: string;
@@ -106,7 +107,9 @@ export default function Swap() {
   const [assetBPriceOfOneAssetA, setAssetBPriceOfOneAssetA] = useState<string>("");
 
   const [isMaxValueLessThenMinAmount, setIsMaxValueLessThenMinAmount] = useState<boolean>(false);
-
+  const [tokenAPrice, setTokenAPrice] = useState<string>("");
+  const [tokenBPrice, setTokenBPrice] = useState<string>("");
+  const [usdcPrice, setUsdcPrice] = useState<string>("");
   const nativeToken = {
     tokenId: "",
     assetTokenMetadata: {
@@ -121,6 +124,35 @@ export default function Swap() {
 
   const tokenADecimal = new Decimal(selectedTokenAValue.tokenValue || 0);
   const tokenBDecimal = new Decimal(selectedTokenBValue.tokenValue || 0);
+
+
+  // const [quotes, setQuotes] = useState(null);
+  // const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const response = await axios.get(`/api/crypto?symbol=usdc`);
+        setUsdcPrice(response.data.data.USDC.quote.USD.price);
+      } catch (err) {
+        console.error(err);
+        setTokenBPrice("");
+        setTokenAPrice("");
+      }
+    };
+    
+    fetchQuotes();
+  }, []);
+  
+ 
+  useEffect(() => {
+    getPriceOfUsdcFromToken("1");
+  }, [selectedTokens.tokenA, selectedTokens.tokenB]);
+
+  useEffect(() => {
+    getPriceOfNativeFromAsset(tokenBPrice, InputEditedType.exactOut);
+  }, [tokenBPrice]);
+
 
   const handleSwapNativeForAssetGasFee = async () => {
     const tokenA = formatInputTokenValue(tokenAValueForSwap.tokenValue, selectedTokens.tokenA.decimals);
@@ -276,6 +308,71 @@ export default function Swap() {
     }
   };
 
+  const getPriceOfNativeFromAsset = async (value: string, inputType: string) => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+          ? selectedTokens.tokenB.decimals
+          : selectedTokens.tokenA.decimals
+      );
+
+      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+        api,
+        selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+          ? selectedTokens?.tokenB?.tokenId
+          : selectedTokens?.tokenA.tokenId,
+        valueWithDecimals
+      );
+
+      if (nativeTokenPrice) {
+        setLowTradingMinimum(nativeTokenPrice === "0");
+        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+        const nativeTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(nativeTokenNoSemicolons),
+          selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+            ? selectedTokens.tokenA.decimals
+            : selectedTokens.tokenB.decimals
+        );
+
+        const nativeTokenWithSlippage =
+          inputType === InputEditedType.exactIn
+            ? calculateSlippageReduce(nativeTokenNoDecimals, slippageValue)
+            : calculateSlippageAdd(nativeTokenNoDecimals, slippageValue);
+
+        if (tokenBalances?.balance) {
+          if (inputType === InputEditedType.exactIn) {
+            setTokenBPrice(nativeTokenNoDecimals.toString());
+          } else if (inputType === InputEditedType.exactOut) {
+            setTokenAPrice(nativeTokenNoDecimals.toString());
+          }
+        }
+      }
+    }
+  };
+
+  const getPriceOfUsdcFromToken = async (value: string) => {
+    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(value, "6");
+      if (selectedTokens.tokenB.tokenId) {
+        const assetTokenPrice = await getAssetTokenAFromAssetTokenB(
+          api,
+          valueWithDecimals,
+          usdcToken[0].tokenId,
+          selectedTokens.tokenB.tokenId,
+        );
+        if (assetTokenPrice) {
+          const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+          const assetTokenNoDecimals = Number(formatDecimalsFromToken(assetTokenNoSemicolons, "6"));
+          const tokenB_Price = assetTokenNoDecimals * Number(usdcPrice);
+          setTokenBPrice(tokenB_Price.toString());
+        }
+      }
+    }
+  };
+
+
   const getPriceOfAssetTokenAFromAssetTokenB = async (value: string) => {
     if (api) {
       const valueWithDecimals = formatInputTokenValue(value, selectedTokens.tokenB.decimals);
@@ -328,6 +425,7 @@ export default function Swap() {
       }
     }
   };
+
 
   const tokenAValue = async (value?: string) => {
     if (value) {
@@ -1573,8 +1671,8 @@ export default function Swap() {
       )} */}
       {/* For Desktop */}
       <div className="hidden sm:flex flex-col  px-9 py-6 gap-5  w-[540px] rounded-2xl bg-gradient-to-r from-[#2B0281] via-[#1D0058] to-[#220068] dark:bg-gradient-to-r dark:from-[#E8E8E8] dark:to-[#E8E8E8] p-0.5">
-        <TokenPriceGraph name={selectedTokens.tokenA.tokenSymbol} price={888.88} changeRate={"8.88"} />
-        <TokenPriceGraph name={selectedTokens.tokenB.tokenSymbol} price={888.88} changeRate={"8.88"} />
+        <TokenPriceGraph name={selectedTokens.tokenA.tokenSymbol} price={Number(tokenAPrice)} changeRate="8.88" />
+        <TokenPriceGraph name={selectedTokens.tokenB.tokenSymbol} price={Number(tokenBPrice)} changeRate="8.88" />
       </div>
       {/* For Mobile */}
       <div className="block sm:hidden w-[95%] rounded-2xl bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-r dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">
