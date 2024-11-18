@@ -1,0 +1,321 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --primary-color: #220068;
+    --secondary-color: #5F20E5;
+    --text-maincolor: #B4D2FF;
+    --text-secondarycolor: #5100FE;
+    --swap-border-color: linear-gradient(to bottom right #5100FE, #B4D2FF);
+    --tooltip-text-color: #B4D2FF;
+    --tooltip-background-color: black;
+    --tooltip-margin: 30px;
+    --tooltip-arrow-size: 6px;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@500&display=swap');
+
+body {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 16px;
+}
+
+/*========================================== Shadow Effect ==========================================*/
+
+.box-shadow-down-black {
+    box-shadow: 0 4px 10px 0 #000000a1;
+}
+
+
+@responsive{
+  .box-shadow-black {
+      box-shadow: 6px 0 10px 0 #120037;
+  }
+  .box-shadow-inner {
+      box-shadow: inset 10px 0 30px 0 rgba(0, 1, 41, 0.284), 
+      inset 0 10px 30px 0 rgba(0, 1, 41, 0.45);
+    }
+  .box-shadow-out {
+      box-shadow: 0 0 40px 0 rgba(195, 191, 255, 0.418);
+  }
+}
+.navbar-shadow-down-black {
+    box-shadow: 0 0 40px 0 #00000093;
+}
+
+.sidebar-shadow-down-black {
+    box-shadow: 0 2px 4px 0 #000000a1;
+}
+
+#main-button:hover{ 
+  border-color: #7BB0FF;
+}
+/* ================ Desktop Scrollbar for Token Select ================ */
+
+/*Main scrollbar width */
+::-webkit-scrollbar {
+  width: 0.1px;
+}
+
+/* Custom scroll bar */
+.token-select-scrollbar-desktop::-webkit-scrollbar {
+  width: 5px;
+}
+/* Handle */
+.token-select-scrollbar-desktop::-webkit-scrollbar-thumb {
+  background: #B4D2FF40; 
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+.token-select-scrollbar-desktop::-webkit-scrollbar-thumb:hover {
+  background: #b4d2ff0e; 
+}
+/* ================ Dark Mode Desktop Scrollbar for Pools list ================ */
+/*Main scrollbar width */
+::-webkit-scrollbar {
+  width: 0.1px;
+}
+
+/* Custom scroll bar */
+.token-select-scrollbar-desktop-dark::-webkit-scrollbar {
+  width: 5px;
+}
+/* Handle */
+.token-select-scrollbar-desktop-dark::-webkit-scrollbar-thumb {
+  background: #CCCCCC; 
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+.token-select-scrollbar-desktop-dark::-webkit-scrollbar-thumb:hover {
+  background: #b4d2ff0e; 
+}
+
+/* ================ Desktop Scrollbar for Pools list ================ */
+
+/*Main scrollbar width */
+::-webkit-scrollbar {
+    width: 0.1px;
+  }
+
+  /* Custom scroll bar */
+.pools-list-scrollbar-desktop::-webkit-scrollbar {
+    width: 10px;
+  }
+  /* Handle */
+.pools-list-scrollbar-desktop::-webkit-scrollbar-thumb {
+    background: #B4D2FF40; 
+    border-radius: 10px;
+  }
+  
+  /* Handle on hover */
+.pools-list-scrollbar-desktop::-webkit-scrollbar-thumb:hover {
+    background: #b4d2ff0e; 
+  }
+/* ================ Dark Mode Desktop Scrollbar for Pools list ================ */
+
+/*Main scrollbar width */
+::-webkit-scrollbar {
+  width: 0.1px;
+}
+
+/* Custom scroll bar */
+.pools-list-scrollbar-desktop-dark::-webkit-scrollbar {
+  width: 10px;
+}
+/* Handle */
+.pools-list-scrollbar-desktop-dark::-webkit-scrollbar-thumb {
+  background: #CCCCCC; 
+  border-radius: 10px;
+}
+
+/* Handle on hover */
+.pools-list-scrollbar-desktop-dark::-webkit-scrollbar-thumb:hover {
+  background: #b4d2ff0e; 
+}
+
+/* =============== Mobile Scrollbar for Pools list =============== */
+  
+/*Main scrollbar width */
+::-webkit-scrollbar {
+  width: 0.1px;
+}
+
+/* Custom scroll bar */
+.pools-list-scrollbar-mobile::-webkit-scrollbar {
+  width: 8px;
+}
+/* Handle */
+.pools-list-scrollbar-mobile::-webkit-scrollbar-thumb {
+  background: #5100FE; 
+  border-radius: 8px;
+}
+
+/* Handle on hover */
+.pools-list-scrollbar-mobile::-webkit-scrollbar-thumb:hover {
+  background: #b4d2ff0e; 
+}
+/* =============== Dark Mode Mobile Scrollbar  for Pools list =============== */
+  
+/*Main scrollbar width */
+::-webkit-scrollbar {
+  width: 0.1px;
+}
+
+/* Custom scroll bar */
+.pools-list-scrollbar-mobile-dark::-webkit-scrollbar {
+  width: 8px;
+}
+/* Handle */
+.pools-list-scrollbar-mobile-dark::-webkit-scrollbar-thumb {
+  background: #CCCCCC; 
+  border-radius: 8px;
+}
+
+/* Handle on hover */
+.pools-list-scrollbar-mobile-dark::-webkit-scrollbar-thumb:hover {
+  background: #b4d2ff0e; 
+}
+/*========================================== Tooltip Generation ==========================================*/
+
+/* Wrapping */
+.Tooltip-Wrapper {
+  display: inline-block;
+  position: relative;
+}
+
+/* Absolute positioning */
+.Tooltip-Tip {
+  position: absolute;
+  border-radius: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px;
+  color: var(--tooltip-text-color);
+  background: var(--tooltip-background-color);
+  font-size: 12px;
+  font-family: sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+/* CSS border triangles */
+.Tooltip-Tip::before {
+  content: " ";
+  left: 50%;
+  border: solid transparent;
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+  border-width: var(--tooltip-arrow-size);
+  margin-left: calc(var(--tooltip-arrow-size) * -1);
+}
+
+/* Absolute positioning */
+.Tooltip-Tip.top {
+  top: calc(var(--tooltip-margin) * -1);
+}
+/* CSS border triangles */
+.Tooltip-Tip.top::before {
+  top: 100%;
+  border-top-color: var(--tooltip-background-color);
+} 
+
+/* Absolute positioning */
+.Tooltip-Tip.right {
+  left: calc(100% + var(--tooltip-margin));
+  top: 50%;
+  transform: translateX(0) translateY(-50%);
+}
+/* CSS border triangles */
+.Tooltip-Tip.right::before {
+  left: calc(var(--tooltip-arrow-size) * -1);
+  top: 50%;
+  transform: translateX(0) translateY(-50%);
+  border-right-color: var(--tooltip-background-color);
+}
+
+/* Absolute positioning */
+.Tooltip-Tip.bottom {
+  bottom: calc(var(--tooltip-margin) * -1);
+}
+/* CSS border triangles */
+.Tooltip-Tip.bottom::before {
+  bottom: 100%;
+  border-bottom-color: var(--tooltip-background-color);
+}
+
+/* Absolute positioning */
+.Tooltip-Tip.left {
+  left: auto;
+  right: calc(100% + var(--tooltip-margin));
+  top: 50%;
+  transform: translateX(0) translateY(-50%);
+}
+/* CSS border triangles */
+.Tooltip-Tip.left::before {
+  left: auto;
+  right: calc(var(--tooltip-arrow-size) * -2);
+  top: 50%;
+  transform: translateX(0) translateY(-50%);
+  border-left-color: var(--tooltip-background-color);
+}
+
+/* Sidebar Sticky */
+
+.sidebar {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+}
+
+.input-direction-reverse {
+  direction: rtl;
+}
+
+/* Show Chart with popup effect */
+
+.showchart-none {
+  position: absolute;
+  bottom: 0px; /* Initially hide below the viewport */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: bottom 1s ease-in-out;
+}
+.showchart {
+  bottom: 200px;
+}
+.showPoolInfo-none {
+  position: absolute;
+  bottom: 0px; /* Initially hide below the viewport */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: bottom 3s ease-in-out;
+}
+.showPoolInfo {
+  bottom: 200px;
+}
+
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
