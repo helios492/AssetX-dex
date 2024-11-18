@@ -140,19 +140,21 @@ export default function Swap() {
         setTokenAPrice("");
       }
     };
-    
+
     fetchQuotes();
   }, []);
-  
- 
-  useEffect(() => {
-    getPriceOfUsdcFromToken("1");
-  }, [selectedTokens.tokenA, selectedTokens.tokenB]);
+
 
   useEffect(() => {
-    getPriceOfNativeFromAsset(tokenBPrice, InputEditedType.exactOut);
-  }, [tokenBPrice]);
-
+    if (selectedTokens.tokenA.tokenSymbol === nativeTokenSymbol) {
+      getPriceOfAssetFromNative("1", InputEditedType.exactOut);
+      getPriceOfNativeFromAsset(tokenAPrice, InputEditedType.exactIn);
+    } else {
+      console.log("selectedTokens==================>", selectedTokens);
+      getPriceOfAssetFromNative("1", InputEditedType.exactIn);
+      getPriceOfNativeFromAsset(tokenBPrice, InputEditedType.exactOut);
+    }
+  }, [selectedTokens]);
 
   const handleSwapNativeForAssetGasFee = async () => {
     const tokenA = formatInputTokenValue(tokenAValueForSwap.tokenValue, selectedTokens.tokenA.decimals);
@@ -308,6 +310,39 @@ export default function Swap() {
     }
   };
 
+  const getPriceOfAssetFromNative = async (value: string, inputType: string) => {
+    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+          ? selectedTokens.tokenA.decimals
+          : selectedTokens.tokenB.decimals
+      );
+
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
+        api,
+        usdcToken[0].tokenId,
+        valueWithDecimals
+      );
+
+      if (assetTokenPrice) {
+        setLowTradingMinimum(assetTokenPrice === "0");
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          "6"
+        );
+
+        if (inputType === InputEditedType.exactIn) {
+          setTokenBPrice((Number(assetTokenNoDecimals) * Number(usdcPrice)).toString());
+        } else if (inputType === InputEditedType.exactOut) {
+          setTokenAPrice((Number(assetTokenNoDecimals) * Number(usdcPrice)).toString());
+        }
+      }
+    }
+  };
+
   const getPriceOfNativeFromAsset = async (value: string, inputType: string) => {
     if (api) {
       const valueWithDecimals = formatInputTokenValue(
@@ -335,11 +370,6 @@ export default function Swap() {
             : selectedTokens.tokenB.decimals
         );
 
-        const nativeTokenWithSlippage =
-          inputType === InputEditedType.exactIn
-            ? calculateSlippageReduce(nativeTokenNoDecimals, slippageValue)
-            : calculateSlippageAdd(nativeTokenNoDecimals, slippageValue);
-
         if (tokenBalances?.balance) {
           if (inputType === InputEditedType.exactIn) {
             setTokenBPrice(nativeTokenNoDecimals.toString());
@@ -351,27 +381,81 @@ export default function Swap() {
     }
   };
 
-  const getPriceOfUsdcFromToken = async (value: string) => {
-    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
-    if (api) {
-      const valueWithDecimals = formatInputTokenValue(value, "6");
-      if (selectedTokens.tokenB.tokenId) {
-        const assetTokenPrice = await getAssetTokenAFromAssetTokenB(
-          api,
-          valueWithDecimals,
-          usdcToken[0].tokenId,
-          selectedTokens.tokenB.tokenId,
-        );
-        if (assetTokenPrice) {
-          const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
-          const assetTokenNoDecimals = Number(formatDecimalsFromToken(assetTokenNoSemicolons, "6"));
-          const tokenB_Price = assetTokenNoDecimals * Number(usdcPrice);
-          setTokenBPrice(tokenB_Price.toString());
-        }
-      }
-    }
-  };
+  // const getPriceOfNativeFromAsset = async (value: string, inputType: string) => {
+  //   const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+  //   if (api) {
+  //     const valueWithDecimals = formatInputTokenValue(
+  //       value,
+  //       "6"
+  //     );
 
+  //     const nativeTokenPrice = await getNativeTokenFromAssetToken(
+  //       api,
+  //       usdcToken[0].tokenId,
+  //       valueWithDecimals
+  //     );
+
+  //     if (nativeTokenPrice) {
+  //       // setLowTradingMinimum(nativeTokenPrice === "0");
+  //       const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+  //       const nativeTokenNoDecimals = formatDecimalsFromToken(
+  //         parseFloat(nativeTokenNoSemicolons),
+  //         selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+  //           ? selectedTokens.tokenA.decimals
+  //           : selectedTokens.tokenB.decimals
+  //       );
+
+  //       if (tokenBalances?.balance) {
+  //         if (inputType === InputEditedType.exactIn) {
+  //           setTokenBPrice((Number(nativeTokenNoDecimals) * Number(usdcPrice)).toString());
+  //         } else if (inputType === InputEditedType.exactOut) {
+  //           setTokenAPrice((Number(nativeTokenNoDecimals) * Number(usdcPrice)).toString());
+  //         }
+  //       }
+  //     }
+  //   }
+  // };
+
+  // const getPriceOfAssetFromNative = async (value: string, inputType: string) => {
+  //   if (api) {
+  //     const valueWithDecimals = formatInputTokenValue(
+  //       value,
+  //       selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+  //         ? selectedTokens.tokenA.decimals
+  //         : selectedTokens.tokenB.decimals
+  //     );
+  //     console.log("valueWithDecimals================>", valueWithDecimals);
+
+  //     const assetTokenPrice = await getAssetTokenFromNativeToken(
+  //       api,
+  //       selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+  //         ? selectedTokens?.tokenB?.tokenId
+  //         : selectedTokens?.tokenA?.tokenId,
+  //       valueWithDecimals
+  //     );
+
+  //     if (assetTokenPrice) {
+  //       // setLowTradingMinimum(assetTokenPrice === "0");
+  //       const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+  //       const assetTokenNoDecimals = formatDecimalsFromToken(
+  //         parseFloat(assetTokenNoSemicolons),
+  //         selectedTokens?.tokenA?.tokenSymbol === nativeTokenSymbol
+  //           ? selectedTokens.tokenB.decimals
+  //           : selectedTokens.tokenA.decimals
+  //       );
+
+  //       if (inputType === InputEditedType.exactIn) {
+  //         // setTokenAValueForSwap({ tokenValue: value });
+  //         // setTokenBValueForSwap({ tokenValue: assetTokenWithSlippage });
+  //         setTokenBPrice(assetTokenNoDecimals.toString());
+  //       } else if (inputType === InputEditedType.exactOut) {
+  //         // setTokenAValueForSwap({ tokenValue: assetTokenWithSlippage });
+  //         // setTokenBValueForSwap({ tokenValue: value });
+  //         setTokenAPrice(assetTokenNoDecimals.toString());
+  //       }
+  //     }
+  //   }
+  // };
 
   const getPriceOfAssetTokenAFromAssetTokenB = async (value: string) => {
     if (api) {
