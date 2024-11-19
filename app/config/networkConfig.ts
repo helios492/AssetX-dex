@@ -6,8 +6,8 @@ type NetworkConfig = {
   parents: number;
   assethubSubscanUrl?: string;
 };
-
 export const NETWORKS: Record<NetworkKeys, NetworkConfig> = {
+
   [NetworkKeys.Westend]: {
     nativeTokenSymbol: "WND",
     rpcUrl: "wss://westmint-rpc.polkadot.io",

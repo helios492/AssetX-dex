@@ -1,8 +1,16 @@
 "use client";
 import Link from "next/link";
 import CreatePool from "@/app/components/create-pool";
+import { useSearchParams } from "next/navigation";
 
 export default function Liquidity() {
+  const searchParams = useSearchParams();
+
+  const tokenASymbol = searchParams.get('tokenA');
+  const tokenBSymbol = searchParams.get('tokenB');
+
+  console.log("tokenASymbol", tokenASymbol, "tokenBSymbol", tokenBSymbol)
+  
   return (
     <div className="flex flex-col justify-start min-w-[360px] items-center h-screen sm:h-[calc(100vh-90px)] pt-[20%] pb-[30%] sm:pb-[10%] sm:pt-16 gap-6 sm:gap-10 text-[var(--text-maincolor)] dark:text-[#120038] overflow-auto">
       <div className="hidden sm:flex flex-row p-1 w-[280px] bg-[#220068] dark:bg-[#E9E9E9] font-bold rounded-full">
@@ -20,7 +28,13 @@ export default function Liquidity() {
           </button>
         </Link>
       </div>
-      <CreatePool />
+      {tokenASymbol && tokenBSymbol ?
+      <CreatePool
+      tokenASymbol = {tokenASymbol || ''}
+      tokenBSymbol = {tokenBSymbol || ''}
+      />
+      :
+      <CreatePool tokenASymbol={""} tokenBSymbol={""}/>}
     </div>
   )
 }

@@ -8,17 +8,19 @@ import {
   isShowChartModalAtom,
   selectedTokensAtom,
   showSelectTokenModalAtom,
+  slippageValueAtom,
   tokenSwapOrderAtom,
 } from "@/app/utils/store";
 import TokenSelectionInput from "@/app/components/side-bar/swap/token-selection-input";
 import Image from "next/image";
 import { useAtom } from "jotai";
 import Link from "next/link";
+import { ApiPromise, WsProvider } from '@polkadot/api';
 import MainButton from "@/app/components/button/main-button";
 import TokenPriceGraph from "@/app/components/side-bar/swap/token-price-graph";
 import TokenPriceGraphMobile from "@/app/components/side-bar/swap/token-price-graph-mobile";
 import { useEffect, useMemo, useState } from "react";
-import { InputEditedProps, PoolCardProps, TokenDecimalsErrorProps, TokenProps } from "@/app/types";
+import { InputEditedProps, PoolCardProps, PoolsTokenMetadata, TokenDecimalsErrorProps, TokenProps } from "@/app/types";
 import { ActionType, InputEditedType, TokenPosition, TokenSelection, TransactionTypes } from "@/app/types/enum";
 import { useAppContext } from "@/app/state/hook";
 import useGetNetwork from "@/app/hooks/useGetNetwork";
@@ -33,6 +35,8 @@ import { LottieMedium } from "@/app/components/loader";
 import ReviewTransactionModal from "@/app/components/review-transaction-modal";
 import WarningMessage from "@/app/components/warning-message";
 import SwapPoolResultModal from "@/app/components/swap-pool-result-modal";
+import axios, { AxiosResponse } from "axios";
+import { useSearchParams } from 'next/navigation';
 
 type TokenValueProps = {
   tokenValue: string;
@@ -51,7 +55,8 @@ export default function Swap() {
   const [showChartModal] = useAtom(isShowChartModalAtom);
   const [showSelectTokenModal, setShowSelectTokenModal] = useAtom(showSelectTokenModalAtom);
   const { state, dispatch } = useAppContext();
-  const { nativeTokenSymbol } = useGetNetwork();
+  const { nativeTokenSymbol, rpcUrl } = useGetNetwork();
+  const searchParams = useSearchParams();
 
   const {
     tokenBalances,
@@ -71,6 +76,7 @@ export default function Swap() {
   } = state;
 
   const [selectedTokens, setSelectedTokens] = useAtom(selectedTokensAtom);
+  const [slippageValue, setSlippageValue] = useAtom(slippageValueAtom);
 
   const [inputEdited, setInputEdited] = useState<InputEditedProps>({ inputType: InputEditedType.exactIn });
   const [selectedTokenAValue, setSelectedTokenAValue] = useState<TokenValueProps>({ tokenValue: "" });
@@ -81,7 +87,6 @@ export default function Swap() {
   const [tokenBValueForSwap, setTokenBValueForSwap] = useState<TokenValueSlippageProps>({
     tokenValue: "0",
   });
-  const [slippageValue, setSlippageValue] = useState<number>(15);
   const [walletHasEnoughNativeToken, setWalletHasEnoughNativeToken] = useState<boolean>(false);
   const [availablePoolTokenA, setAvailablePoolTokenA] = useAtom(availablePoolTokenAAtom);
   const [availablePoolTokenB, setAvailablePoolTokenB] = useAtom(availablePoolTokenBAtom);
@@ -106,8 +111,11 @@ export default function Swap() {
   const [assetBPriceOfOneAssetA, setAssetBPriceOfOneAssetA] = useState<string>("");
 
   const [isMaxValueLessThenMinAmount, setIsMaxValueLessThenMinAmount] = useState<boolean>(false);
-
-  const nativeToken = {
+  const [tokenAPrice, setTokenAPrice] = useState<string>("");
+  const [tokenBPrice, setTokenBPrice] = useState<string>("");
+  const [usdcPrice, setUsdcPrice] = useState<string>("");
+  const [nativeToken_Price, setNativeToken_Price] = useState<string>("");
+  const [native_Token, setNative_Token] = useState<PoolsTokenMetadata[]>([{
     tokenId: "",
     assetTokenMetadata: {
       symbol: tokenBalances?.tokenSymbol as string,
@@ -117,10 +125,127 @@ export default function Swap() {
     tokenAsset: {
       balance: tokenBalances?.balance,
     },
-  };
+  }])
+
+  const nativeToken = native_Token[0];
+
+  const tokenASymbol = searchParams.get('tokenA');
+  const tokenBSymbol = searchParams.get('tokenB');
+
+  useEffect(() => {
+    console.log("toleranceState====================>", slippageValue);
+  }, [slippageValue])
+
+  useEffect(() => {
+    if (tokenASymbol && tokenBSymbol) {
+      const tokenA = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenASymbol?.toLowerCase())
+      const tokenB = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenBSymbol?.toLowerCase())
+      setSelectedTokens({
+        tokenA: {
+          tokenId: tokenA[0]?.tokenId || '',
+          tokenSymbol: tokenA[0]?.assetTokenMetadata?.symbol || '',
+          decimals: tokenA[0]?.assetTokenMetadata?.decimals || '',
+          tokenBalance: String(tokenA[0]?.tokenAsset?.balance || '0')
+        },
+        tokenB: {
+          tokenId: tokenB[0]?.tokenId || '',
+          tokenSymbol: tokenB[0]?.assetTokenMetadata?.symbol || '',
+          decimals: tokenB[0]?.assetTokenMetadata?.decimals || '',
+          tokenBalance: String(tokenB[0]?.tokenAsset?.balance || '0')
+        }
+      })
+    }
+  }, [tokenASymbol, tokenBSymbol, poolsTokenMetadata, nativeToken])
+
+  useEffect(() => {
+    if (tokenBalances) {
+      setNative_Token([{
+        tokenId: "",
+        assetTokenMetadata: {
+          symbol: tokenBalances?.tokenSymbol as string,
+          name: tokenBalances?.tokenSymbol as string,
+          decimals: tokenBalances?.tokenDecimals as string,
+        },
+        tokenAsset: {
+          balance: tokenBalances?.balance,
+        },
+      }]);
+    } else {
+      const getNativeTokenInfo = async () => {
+        // Connect to the blockchain
+        const provider = new WsProvider(rpcUrl); // Use the appropriate WebSocket endpoint
+        const api = await ApiPromise.create({ provider });
+
+        // Get native token information
+        const symbols = api.registry.chainTokens; // Symbol(s) of the native token
+        const decimals = api.registry.chainDecimals; // Decimals of the native token
+
+        setNative_Token([{
+          tokenId: "",
+          assetTokenMetadata: {
+            symbol: symbols[0],
+            name: symbols[0],
+            decimals: decimals[0],
+          },
+          tokenAsset: {
+            balance: 0,
+          },
+        }]);
+
+        // Example: Get existential deposit (minimum balance)
+        const existentialDeposit = api.consts.balances.existentialDeposit.toHuman();
+        console.log('Existential Deposit:', existentialDeposit);
+
+        await api.disconnect(); // Disconnect from the chain
+      };
+      getNativeTokenInfo()
+    }
+  }, [tokenBalances])
 
   const tokenADecimal = new Decimal(selectedTokenAValue.tokenValue || 0);
   const tokenBDecimal = new Decimal(selectedTokenBValue.tokenValue || 0);
+
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const response = await axios.get(`/api/crypto?symbol=usdc`);
+        setUsdcPrice(response.data.data.USDC.quote.USD.price);
+      } catch (err) {
+        console.error(err);
+        setTokenBPrice("");
+        setTokenAPrice("");
+      }
+    };
+
+    fetchQuotes();
+  }, [poolsTokenMetadata, tokenBalances]);
+
+
+  useEffect(() => {
+    getPriceOfAssetFromNative("1");
+
+    if (selectedTokens.tokenA.tokenSymbol === nativeTokenSymbol) {
+      setTokenAPrice(nativeToken_Price);
+      if (tokenAPrice)
+        getPriceOfNativeFromAsset(tokenAPrice, InputEditedType.exactIn);
+    } else if (selectedTokens.tokenB.tokenSymbol === nativeTokenSymbol) {
+      setTokenBPrice(nativeToken_Price);
+      if (tokenBPrice)
+        getPriceOfNativeFromAsset(tokenBPrice, InputEditedType.exactOut);
+    } else {
+      if (selectedTokens.tokenA) {
+        getPriceOfNativeFromAsset(nativeToken_Price, InputEditedType.exactOut);
+        if (tokenAPrice) {
+          getPriceOfNativeFromAsset(nativeToken_Price, InputEditedType.exactIn);
+        }
+      } else if (selectedTokens.tokenB) {
+        getPriceOfNativeFromAsset(nativeToken_Price, InputEditedType.exactIn);
+        if (tokenBPrice) {
+          getPriceOfNativeFromAsset(nativeToken_Price, InputEditedType.exactOut);
+        }
+      }
+    }
+  }, [selectedTokens, tokenAPrice, tokenBPrice, nativeToken_Price]);
 
   const handleSwapNativeForAssetGasFee = async () => {
     const tokenA = formatInputTokenValue(tokenAValueForSwap.tokenValue, selectedTokens.tokenA.decimals);
@@ -276,6 +401,65 @@ export default function Swap() {
     }
   };
 
+  const getPriceOfAssetFromNative = async (value: string) => {
+    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        nativeToken.assetTokenMetadata.decimals
+      );
+
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
+        api,
+        usdcToken[0].tokenId,
+        valueWithDecimals
+      );
+
+      if (assetTokenPrice) {
+        // setLowTradingMinimum(assetTokenPrice === "0");
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          "6"
+        );
+        setNativeToken_Price((Number(assetTokenNoDecimals) * Number(usdcPrice)).toString());
+      }
+    }
+  };
+
+  const getPriceOfNativeFromAsset = async (value: string, inputType: string) => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        inputType === InputEditedType.exactIn
+          ? selectedTokens.tokenB.decimals
+          : selectedTokens.tokenA.decimals
+      );
+
+      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+        api,
+        inputType === InputEditedType.exactIn
+          ? selectedTokens?.tokenB?.tokenId
+          : selectedTokens?.tokenA.tokenId,
+        valueWithDecimals
+      );
+
+      if (nativeTokenPrice) {
+        // setLowTradingMinimum(nativeTokenPrice === "0");
+        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+        const nativeTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(nativeTokenNoSemicolons),
+          nativeToken.assetTokenMetadata.decimals
+        );
+        if (inputType === InputEditedType.exactIn) {
+          setTokenBPrice(nativeTokenNoDecimals.toString());
+        } else if (inputType === InputEditedType.exactOut) {
+          setTokenAPrice(nativeTokenNoDecimals.toString());
+        }
+      }
+    }
+  };
+
   const getPriceOfAssetTokenAFromAssetTokenB = async (value: string) => {
     if (api) {
       const valueWithDecimals = formatInputTokenValue(value, selectedTokens.tokenB.decimals);
@@ -328,6 +512,7 @@ export default function Swap() {
       }
     }
   };
+
 
   const tokenAValue = async (value?: string) => {
     if (value) {
@@ -507,104 +692,138 @@ export default function Swap() {
   ]);
 
   const getSwapTokenA = async () => {
-    if (api) {
-      const poolsAssetTokenIds = pools?.map((pool: any) => {
-        if (pool?.[0]?.[1].interior?.X2) {
-          const assetTokenIds = pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "").toString();
-          return assetTokenIds;
-        }
-      });
+    const poolLiquidTokens: any = nativeToken.assetTokenMetadata.symbol
+      ? [nativeToken, ...poolsTokenMetadata].filter(
+        (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
+      )
+      : poolsTokenMetadata?.filter(
+        (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
+      );
 
-      const tokens = tokenBalances?.assets?.filter((item: any) => poolsAssetTokenIds.includes(item.tokenId)) || [];
-
-      const assetTokens = [nativeToken]
-        .concat(tokens)
-        ?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
-
-      const poolTokenPairsArray: any[] = [];
-
-      await Promise.all(
-        pools.map(async (pool: any) => {
-          if (pool?.[0]?.[1]?.interior?.X2) {
-            const poolReserve: any = await getPoolReserves(
-              api,
-              pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "")
-            );
-
-            if (poolReserve?.length > 0) {
-              const assetTokenMetadata: any = await api.query.assets.metadata(
-                pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "")
-              );
-
-              poolTokenPairsArray.push({
-                name: `${nativeTokenSymbol}–${assetTokenMetadata.toHuman().symbol}`,
-              });
-            }
+    setAvailablePoolTokenA(poolLiquidTokens);
+    if (selectedTokens.tokenA.tokenId.length || selectedTokens.tokenA.tokenSymbol.length) {
+      const tokenA = poolLiquidTokens.find(item => item.tokenId === selectedTokens.tokenA.tokenId && item.assetTokenMetadata.symbol === selectedTokens.tokenA.tokenSymbol)
+      if (tokenA) {
+        const assetTokenData: TokenProps = {
+          tokenSymbol: tokenA.assetTokenMetadata.symbol,
+          tokenId: tokenA.tokenId,
+          decimals: tokenA.assetTokenMetadata.decimals,
+          tokenBalance: tokenA.tokenAsset.balance,
+        };
+        setSelectedTokens((prev) => {
+          return {
+            ...prev,
+            tokenA: assetTokenData
           }
         })
-      );
-
-      const assetTokensInPoolTokenPairsArray = poolTokenPairsArray.map((item: any) => item.name.split("–")[1]);
-
-      assetTokensInPoolTokenPairsArray.push(nativeTokenSymbol);
-
-      // todo: refactor to be sure what data we are passing - remove any
-      const assetTokensNotInPoolTokenPairsArray: any = assetTokens.filter((item: any) =>
-        assetTokensInPoolTokenPairsArray.includes(item.assetTokenMetadata.symbol)
-      );
-
-      setAvailablePoolTokenA(assetTokensNotInPoolTokenPairsArray);
-      if (selectedTokens.tokenA.tokenId.length || selectedTokens.tokenA.tokenSymbol.length) {
-        const tokenA = assetTokensNotInPoolTokenPairsArray.find(item => item.tokenId === selectedTokens.tokenA.tokenId && item.assetTokenMetadata.symbol === selectedTokens.tokenA.tokenSymbol)
-        if (tokenA) {
-          const assetTokenData: TokenProps = {
-            tokenSymbol: tokenA.assetTokenMetadata.symbol,
-            tokenId: tokenA.tokenId,
-            decimals: tokenA.assetTokenMetadata.decimals,
-            tokenBalance: tokenA.tokenAsset.balance,
-          };
-          setSelectedTokens((prev) => {
-            return {
-              ...prev,
-              tokenA: assetTokenData
-            }
-          })
-        }
       }
     }
+
   };
 
+  // const getSwapTokenA = async () => {
+  //   if (api) {
+  //     const poolsAssetTokenIds = pools?.map((pool: any) => {
+  //       if (pool?.[0]?.[1].interior?.X2) {
+  //         const assetTokenIds = pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "").toString();
+  //         return assetTokenIds;
+  //       }
+  //     });
+
+  //     const tokens = tokenBalances?.assets?.filter((item: any) => poolsAssetTokenIds.includes(item.tokenId)) || [];
+
+  //     const assetTokens = [nativeToken]
+  //       .concat(tokens)
+  //       ?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
+
+  //     const poolTokenPairsArray: any[] = [];
+
+  //     await Promise.all(
+  //       pools.map(async (pool: any) => {
+  //         if (pool?.[0]?.[1]?.interior?.X2) {
+  //           const poolReserve: any = await getPoolReserves(
+  //             api,
+  //             pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "")
+  //           );
+
+  //           if (poolReserve?.length > 0) {
+  //             const assetTokenMetadata: any = await api.query.assets.metadata(
+  //               pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "")
+  //             );
+
+  //             poolTokenPairsArray.push({
+  //               name: `${nativeTokenSymbol}–${assetTokenMetadata.toHuman().symbol}`,
+  //             });
+  //           }
+  //         }
+  //       })
+  //     );
+
+  //     const assetTokensInPoolTokenPairsArray = poolTokenPairsArray.map((item: any) => item.name.split("–")[1]);
+
+  //     assetTokensInPoolTokenPairsArray.push(nativeTokenSymbol);
+
+  //     // todo: refactor to be sure what data we are passing - remove any
+  //     const assetTokensNotInPoolTokenPairsArray: any = assetTokens.filter((item: any) =>
+  //       assetTokensInPoolTokenPairsArray.includes(item.assetTokenMetadata.symbol)
+  //     );
+
+  //     setAvailablePoolTokenA(assetTokensNotInPoolTokenPairsArray);
+  //     if (selectedTokens.tokenA.tokenId.length || selectedTokens.tokenA.tokenSymbol.length) {
+  //       const tokenA = assetTokensNotInPoolTokenPairsArray.find(item => item.tokenId === selectedTokens.tokenA.tokenId && item.assetTokenMetadata.symbol === selectedTokens.tokenA.tokenSymbol)
+  //       if (tokenA) {
+  //         const assetTokenData: TokenProps = {
+  //           tokenSymbol: tokenA.assetTokenMetadata.symbol,
+  //           tokenId: tokenA.tokenId,
+  //           decimals: tokenA.assetTokenMetadata.decimals,
+  //           tokenBalance: tokenA.tokenAsset.balance,
+  //         };
+  //         setSelectedTokens((prev) => {
+  //           return {
+  //             ...prev,
+  //             tokenA: assetTokenData
+  //           }
+  //         })
+  //       }
+  //     }
+  //   }
+  // };
+
   const getSwapTokenB = () => {
-    const poolLiquidTokens: any = [nativeToken]
-      .concat(poolsTokenMetadata)
-      ?.filter((item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId);
-    if (tokenBalances !== null) {
-      for (const item of poolLiquidTokens) {
-        for (const walletAsset of tokenBalances.assets) {
-          if (item.tokenId === walletAsset.tokenId) {
-            item.tokenAsset.balance = walletAsset.tokenAsset.balance;
+    const poolLiquidTokens: any = nativeToken.assetTokenMetadata.symbol
+      ? [nativeToken, ...poolsTokenMetadata].filter(
+        (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
+      )
+      : poolsTokenMetadata?.filter(
+        (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
+      );
+
+    // for (const item of poolLiquidTokens) {
+    //   for (const walletAsset of tokenBalances.assets) {
+    //     if (item.tokenId === walletAsset.tokenId) {
+    //       item.tokenAsset.balance = walletAsset.tokenAsset.balance;
+    //     }
+    //   }
+    // }
+    setAvailablePoolTokenB(poolLiquidTokens);
+    if (selectedTokens.tokenB.tokenId.length || selectedTokens.tokenB.tokenSymbol.length) {
+      const tokenB = poolLiquidTokens.find(item => item.tokenId === selectedTokens.tokenB.tokenId && item.assetTokenMetadata.symbol === selectedTokens.tokenB.tokenSymbol)
+      if (tokenB) {
+        const assetTokenData: TokenProps = {
+          tokenSymbol: tokenB.assetTokenMetadata.symbol,
+          tokenId: tokenB.tokenId,
+          decimals: tokenB.assetTokenMetadata.decimals,
+          tokenBalance: tokenB.tokenAsset.balance,
+        };
+        setSelectedTokens((prev) => {
+          return {
+            ...prev,
+            tokenB: assetTokenData
           }
-        }
-      }
-      setAvailablePoolTokenB(poolLiquidTokens);
-      if (selectedTokens.tokenB.tokenId.length || selectedTokens.tokenB.tokenSymbol.length) {
-        const tokenB = poolLiquidTokens.find(item => item.tokenId === selectedTokens.tokenB.tokenId && item.assetTokenMetadata.symbol === selectedTokens.tokenB.tokenSymbol)
-        if (tokenB) {
-          const assetTokenData: TokenProps = {
-            tokenSymbol: tokenB.assetTokenMetadata.symbol,
-            tokenId: tokenB.tokenId,
-            decimals: tokenB.assetTokenMetadata.decimals,
-            tokenBalance: tokenB.tokenAsset.balance,
-          };
-          setSelectedTokens((prev) => {
-            return {
-              ...prev,
-              tokenB: assetTokenData
-            }
-          })
-        }
+        })
       }
     }
+
     return poolLiquidTokens;
   };
 
@@ -1488,7 +1707,7 @@ export default function Swap() {
             tokenValue={selectedTokenAValue?.tokenValue}
             onClick={() => fillTokenPairsAndOpenModal(TokenSelection.TokenA)}
             onSetTokenValue={tokenAValue}
-            disabled={!selectedAccount || swapLoading || !tokenBalances?.assets || poolsTokenMetadata.length === 0}
+            disabled={swapLoading || poolsTokenMetadata.length === 0}
             assetLoading={assetLoading}
             onMaxClick={onMaxClick}
           />
@@ -1511,9 +1730,13 @@ export default function Swap() {
             tokenValue={selectedTokenBValue?.tokenValue}
             onClick={() => fillTokenPairsAndOpenModal(TokenSelection.TokenB)}
             onSetTokenValue={tokenBValue}
-            disabled={!selectedAccount || swapLoading || !tokenBalances?.assets || poolsTokenMetadata.length === 0}
+            disabled={swapLoading || poolsTokenMetadata.length === 0}
             assetLoading={assetLoading}
           />
+          <div className="mt-1 text-small flex flex-row gap-5 justify-center">
+            <p>Slippage Tolerance</p>
+            <p>{slippageValue}%</p>
+          </div>
           <div className="mt-1 text-small">{swapGasFeesMessage}</div>
           <MainButton
             onClick={() => (getSwapButtonProperties.disabled ? null : setReviewModalOpen(true))}
@@ -1573,8 +1796,8 @@ export default function Swap() {
       )} */}
       {/* For Desktop */}
       <div className="hidden sm:flex flex-col  px-9 py-6 gap-5  w-[540px] rounded-2xl bg-gradient-to-r from-[#2B0281] via-[#1D0058] to-[#220068] dark:bg-gradient-to-r dark:from-[#E8E8E8] dark:to-[#E8E8E8] p-0.5">
-        <TokenPriceGraph name={selectedTokens.tokenA.tokenSymbol} price={888.88} changeRate={"8.88"} />
-        <TokenPriceGraph name={selectedTokens.tokenB.tokenSymbol} price={888.88} changeRate={"8.88"} />
+        <TokenPriceGraph name={selectedTokens.tokenA.tokenSymbol} price={tokenAPrice ? Number(parseFloat(tokenAPrice).toFixed(5)) : 0} changeRate="8.88" />
+        <TokenPriceGraph name={selectedTokens.tokenB.tokenSymbol} price={tokenBPrice ? Number(parseFloat(tokenBPrice).toFixed(5)) : 0} changeRate="8.88" />
       </div>
       {/* For Mobile */}
       <div className="block sm:hidden w-[95%] rounded-2xl bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-r dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">

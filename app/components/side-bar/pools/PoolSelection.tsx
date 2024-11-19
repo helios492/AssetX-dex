@@ -157,7 +157,16 @@ const PoolSelection: React.FC<PoolSelectionProps> = ({
           />
         </div>
       </div>
-      {isClicked ? <PoolInformation /> : null}
+      {isClicked ?
+        <PoolInformation
+          tokenPair={tokenPair}
+          nativeToken={nativeToken}
+          assetToken={assetToken}
+          lpTokenAsset={lpTokenAsset}
+          assetTokenId={assetTokenId}
+          lpTokenId={lpTokenId}
+        />
+        : null}
     </div>
   );
 };
