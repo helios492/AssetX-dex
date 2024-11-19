@@ -8,6 +8,7 @@ import {
   isShowChartModalAtom,
   selectedTokensAtom,
   showSelectTokenModalAtom,
+  slippageValueAtom,
   tokenSwapOrderAtom,
 } from "@/app/utils/store";
 import TokenSelectionInput from "@/app/components/side-bar/swap/token-selection-input";
@@ -35,6 +36,7 @@ import ReviewTransactionModal from "@/app/components/review-transaction-modal";
 import WarningMessage from "@/app/components/warning-message";
 import SwapPoolResultModal from "@/app/components/swap-pool-result-modal";
 import axios, { AxiosResponse } from "axios";
+import { useSearchParams } from 'next/navigation';
 
 type TokenValueProps = {
   tokenValue: string;
@@ -54,6 +56,7 @@ export default function Swap() {
   const [showSelectTokenModal, setShowSelectTokenModal] = useAtom(showSelectTokenModalAtom);
   const { state, dispatch } = useAppContext();
   const { nativeTokenSymbol, rpcUrl } = useGetNetwork();
+  const searchParams = useSearchParams();
 
   const {
     tokenBalances,
@@ -73,6 +76,7 @@ export default function Swap() {
   } = state;
 
   const [selectedTokens, setSelectedTokens] = useAtom(selectedTokensAtom);
+  const [slippageValue, setSlippageValue] = useAtom(slippageValueAtom);
 
   const [inputEdited, setInputEdited] = useState<InputEditedProps>({ inputType: InputEditedType.exactIn });
   const [selectedTokenAValue, setSelectedTokenAValue] = useState<TokenValueProps>({ tokenValue: "" });
@@ -83,7 +87,6 @@ export default function Swap() {
   const [tokenBValueForSwap, setTokenBValueForSwap] = useState<TokenValueSlippageProps>({
     tokenValue: "0",
   });
-  const [slippageValue, setSlippageValue] = useState<number>(15);
   const [walletHasEnoughNativeToken, setWalletHasEnoughNativeToken] = useState<boolean>(false);
   const [availablePoolTokenA, setAvailablePoolTokenA] = useAtom(availablePoolTokenAAtom);
   const [availablePoolTokenB, setAvailablePoolTokenB] = useAtom(availablePoolTokenBAtom);
@@ -125,6 +128,34 @@ export default function Swap() {
   }])
 
   const nativeToken = native_Token[0];
+
+  const tokenASymbol = searchParams.get('tokenA');
+  const tokenBSymbol = searchParams.get('tokenB');
+
+  useEffect(() => {
+    console.log("toleranceState====================>", slippageValue);
+  }, [slippageValue])
+
+  useEffect(() => {
+    if (tokenASymbol && tokenBSymbol) {
+      const tokenA = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenASymbol?.toLowerCase())
+      const tokenB = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenBSymbol?.toLowerCase())
+      setSelectedTokens({
+        tokenA: {
+          tokenId: tokenA[0]?.tokenId || '',
+          tokenSymbol: tokenA[0]?.assetTokenMetadata?.symbol || '',
+          decimals: tokenA[0]?.assetTokenMetadata?.decimals || '',
+          tokenBalance: String(tokenA[0]?.tokenAsset?.balance || '0')
+        },
+        tokenB: {
+          tokenId: tokenB[0]?.tokenId || '',
+          tokenSymbol: tokenB[0]?.assetTokenMetadata?.symbol || '',
+          decimals: tokenB[0]?.assetTokenMetadata?.decimals || '',
+          tokenBalance: String(tokenB[0]?.tokenAsset?.balance || '0')
+        }
+      })
+    }
+  }, [tokenASymbol, tokenBSymbol, poolsTokenMetadata, nativeToken])
 
   useEffect(() => {
     if (tokenBalances) {
@@ -404,12 +435,12 @@ export default function Swap() {
           ? selectedTokens.tokenB.decimals
           : selectedTokens.tokenA.decimals
       );
-      
+
       const nativeTokenPrice = await getNativeTokenFromAssetToken(
         api,
         inputType === InputEditedType.exactIn
-        ? selectedTokens?.tokenB?.tokenId
-        : selectedTokens?.tokenA.tokenId,
+          ? selectedTokens?.tokenB?.tokenId
+          : selectedTokens?.tokenA.tokenId,
         valueWithDecimals
       );
 
@@ -420,11 +451,11 @@ export default function Swap() {
           parseFloat(nativeTokenNoSemicolons),
           nativeToken.assetTokenMetadata.decimals
         );
-          if (inputType === InputEditedType.exactIn) {
-            setTokenBPrice(nativeTokenNoDecimals.toString());
-          } else if (inputType === InputEditedType.exactOut) {
-            setTokenAPrice(nativeTokenNoDecimals.toString());
-          }
+        if (inputType === InputEditedType.exactIn) {
+          setTokenBPrice(nativeTokenNoDecimals.toString());
+        } else if (inputType === InputEditedType.exactOut) {
+          setTokenAPrice(nativeTokenNoDecimals.toString());
+        }
       }
     }
   };
@@ -1702,6 +1733,10 @@ export default function Swap() {
             disabled={swapLoading || poolsTokenMetadata.length === 0}
             assetLoading={assetLoading}
           />
+          <div className="mt-1 text-small flex flex-row gap-5 justify-center">
+            <p>Slippage Tolerance</p>
+            <p>{slippageValue}%</p>
+          </div>
           <div className="mt-1 text-small">{swapGasFeesMessage}</div>
           <MainButton
             onClick={() => (getSwapButtonProperties.disabled ? null : setReviewModalOpen(true))}

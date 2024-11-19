@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useAtom } from "jotai";
-import { viewModalAtom } from "@/app/utils/store";
+import { slippageValueAtom, viewModalAtom } from "@/app/utils/store";
 import Image from "next/image";
 const Settings = () => {
   const [viewModal, setViewModal] = useAtom(viewModalAtom);
@@ -11,7 +11,7 @@ const Settings = () => {
       if (viewModal) setViewModal("");
     }
   };
-  const slippage_tolerance = ["0.1%", "0.3%", "0.5%"];
+  const slippage_tolerance = ["0.1", "0.3", "0.5"];
   const trasaction_priority = [
     {
       name: "Auto",
@@ -31,7 +31,7 @@ const Settings = () => {
     { name: "subscan", url: "https://www.subscan.io/" },
     { name: "statescan", url: "https://www.statescan.io/" },
   ];
-  const [toleranceState, setToleranceState] = useState("0.3%");
+  const [slippageValue, setSlippageValue] = useAtom(slippageValueAtom);
   const [priorityState, setPriorityState] = useState("Normal");
   const [clickedBlockExplorer, setClickedBlockExplorer] = useState("");
   useEffect(() => {
@@ -40,6 +40,7 @@ const Settings = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [ref]);
+  
   return (
     <div className="fixed top-0 left-0 w-full h-full z-50 flex justify-center items-center">
       <div className="absolute bg-black bg-opacity-75 w-full h-full" />
@@ -63,14 +64,14 @@ const Settings = () => {
               {slippage_tolerance.map((tolerance) => (
                 <div
                   key={tolerance}
-                  className={` rounded-xl p-[1px] ${toleranceState === tolerance
+                  className={` rounded-xl p-[1px] ${slippageValue === Number(tolerance)
                       ? "bg-gradient-to-r from-[#e6007b93] to-[#9646ff93] text-white dark:text-black"
                       : "bg-[#0F002ED9] dark:bg-[#E9E9E9] text-[var(--text-maincolor)] dark:text-[#120038]"
                     }`}
-                  onClick={() => setToleranceState(tolerance)}
+                  onClick={() => setSlippageValue(Number(tolerance))}
                 >
                   <div className=" w-full h-full bg-[#0f002e]  dark:bg-[#E9E9E9] rounded-xl px-4 py-1.5 cursor-pointer">
-                    <p className=" font-bold">{tolerance}</p>
+                    <p className=" font-bold">{tolerance}%</p>
                   </div>
                 </div>
               ))}
@@ -79,6 +80,7 @@ const Settings = () => {
                 <input
                   className="text-white font-bold bg-transparent outline-none placeholder:text-[var(--text-maincolor)] dark:placeholder:text-[#12003896] dark:text-[#120038]"
                   placeholder="0.0%"
+                  onChange={(e)=>setSlippageValue(Number(e.target.value))}
                 ></input>
               </div>
             </div>

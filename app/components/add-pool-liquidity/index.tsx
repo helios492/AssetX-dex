@@ -500,7 +500,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   }, [addLiquidityLoading]);
 
   return tokenBId?.id && poolExists === false ? (
-    <CreatePool tokenBSelected={selectedTokenB} />
+    <CreatePool tokenBSelected={selectedTokenB} tokenASymbol={""} tokenBSymbol={""} />
   ) : (
     <>
       <div className="sm:w-[540px] w-[95%] rounded-2xl sm:rounded-[50px] sm:box-shadow-out bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-b dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">

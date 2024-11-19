@@ -12,7 +12,7 @@ import useGetNetwork from "@/app/hooks/useGetNetwork";
 import { setTokenBalanceUpdate } from "@/app/services/polkadotWalletServices";
 import { checkCreatePoolGasFee, createPool, getAllLiquidityPoolsTokensMetadata } from "@/app/services/poolServices";
 import { useAppContext } from "@/app/state/hook";
-import { TokenDecimalsErrorProps } from "@/app/types";
+import { PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
 import { ActionType, TransactionTypes } from "@/app/types/enum";
 import { calculateSlippageReduce, checkIfPoolAlreadyExists, convertToBaseUnit, formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FC, useEffect, useMemo, useState } from "react";
 import AddPoolLiquidity from "../add-pool-liquidity";
+import { ApiPromise, WsProvider } from '@polkadot/api';
 
 type AssetTokenProps = {
   tokenSymbol: string;
@@ -42,13 +43,15 @@ type TokenValueProps = {
 };
 
 type CreatePoolProps = {
+  tokenASymbol: string;
+  tokenBSymbol: string;
   tokenBSelected?: AssetTokenProps;
 };
 
 
-const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
+const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSelected }) => {
   const { state, dispatch } = useAppContext();
-  const { assethubSubscanUrl } = useGetNetwork();
+  const { assethubSubscanUrl, rpcUrl } = useGetNetwork();
 
   const router = useRouter();
 
@@ -64,6 +67,7 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
     addLiquidityLoading,
     assetLoading,
     isTokenCanNotCreateWarningPools,
+    poolsTokenMetadata,
   } = state;
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -97,6 +101,83 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
 
   const [isTransactionTimeout, setIsTransactionTimeout] = useState<boolean>(false);
   const [waitingForTransaction, setWaitingForTransaction] = useState<NodeJS.Timeout>();
+  const [native_Token, setNative_Token] = useState<PoolsTokenMetadata[]>([{
+    tokenId: "",
+    assetTokenMetadata: {
+      symbol: tokenBalances?.tokenSymbol as string,
+      name: tokenBalances?.tokenSymbol as string,
+      decimals: tokenBalances?.tokenDecimals as string,
+    },
+    tokenAsset: {
+      balance: tokenBalances?.balance,
+    },
+  }])
+
+  const nativeToken = native_Token[0];
+
+  useEffect(() => {
+    if (tokenBalances) {
+      setNative_Token([{
+        tokenId: "",
+        assetTokenMetadata: {
+          symbol: tokenBalances?.tokenSymbol as string,
+          name: tokenBalances?.tokenSymbol as string,
+          decimals: tokenBalances?.tokenDecimals as string,
+        },
+        tokenAsset: {
+          balance: tokenBalances?.balance,
+        },
+      }]);
+    } else {
+      const getNativeTokenInfo = async () => {
+        // Connect to the blockchain
+        const provider = new WsProvider(rpcUrl); // Use the appropriate WebSocket endpoint
+        const api = await ApiPromise.create({ provider });
+
+        // Get native token information
+        const symbols = api.registry.chainTokens; // Symbol(s) of the native token
+        const decimals = api.registry.chainDecimals; // Decimals of the native token
+
+        setNative_Token([{
+          tokenId: "",
+          assetTokenMetadata: {
+            symbol: symbols[0],
+            name: symbols[0],
+            decimals: decimals[0],
+          },
+          tokenAsset: {
+            balance: 0,
+          },
+        }]);
+
+        // Example: Get existential deposit (minimum balance)
+        const existentialDeposit = api.consts.balances.existentialDeposit.toHuman();
+        console.log('Existential Deposit:', existentialDeposit);
+
+        await api.disconnect(); // Disconnect from the chain
+      };
+      getNativeTokenInfo()
+    }
+  }, [tokenBalances])
+
+  useEffect(() => {
+    if (tokenASymbol && tokenBSymbol) {
+      const tokenA = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenASymbol?.toLowerCase())
+      const tokenB = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenBSymbol?.toLowerCase())
+      setSelectedTokenA({
+        nativeTokenSymbol: tokenA[0]?.assetTokenMetadata?.symbol || '',
+        nativeTokenDecimals: tokenA[0]?.assetTokenMetadata?.decimals || '',
+        tokenId: tokenA[0]?.tokenId || '',
+        tokenBalance: String(tokenA[0]?.tokenAsset?.balance || '0')
+      });
+      setSelectedTokenB({
+        tokenSymbol: tokenB[0]?.assetTokenMetadata?.symbol || '',
+        assetTokenId: tokenB[0]?.tokenId || '',
+        decimals: tokenB[0]?.assetTokenMetadata?.decimals || '',
+        assetTokenBalance: String(tokenB[0]?.tokenAsset?.balance || '0')
+      })
+    }
+  }, [tokenASymbol, tokenBSymbol, poolsTokenMetadata, nativeToken])
 
   const selectedNativeTokenNumber = new Decimal(selectedTokenNativeValue?.tokenValue || 0);
   const selectedAssetTokenNumber = new Decimal(selectedTokenAssetValue?.tokenValue || 0);
@@ -392,7 +473,7 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
 
   return poolExists ? (
     <AddPoolLiquidity tokenBId={{ id: selectedTokenB.assetTokenId }} />
-  ): (
+  ) : (
     <>
       <div className="sm:w-[540px] w-[95%] rounded-2xl sm:rounded-[50px] sm:box-shadow-out bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-b dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">
         <div className="flex flex-col gap-6 h-full w-full bg-gradient-to-br from-[#2B0281] via-[#1D0058] to-[#220068] dark:bg-gradient-to-t dark:from-[#E8E8E8] dark:to-[#E8E8E8] rounded-2xl sm:rounded-[50px] p-7 sm:p-14">

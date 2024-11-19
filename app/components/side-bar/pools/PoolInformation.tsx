@@ -2,13 +2,41 @@ import { useState } from "react";
 import Tooltip from "@/app/components/tooltip";
 import Link from "next/link";
 import Image from "next/image";
+import { LpTokenAsset, Token } from "@/app/types";
+import { useRouter, useSearchParams } from "next/navigation";
 
-const PoolInformation = () => {
+interface PoolSelectionProps {
+  tokenPair: string;
+  nativeToken: Token;
+  assetToken: Token;
+  lpTokenAsset: LpTokenAsset | null;
+  assetTokenId: string;
+  lpTokenId: string | null;
+}
+
+const PoolInformation: React.FC<PoolSelectionProps> = ({
+  tokenPair,
+  nativeToken,
+  assetToken,
+  lpTokenAsset,
+  assetTokenId,
+  lpTokenId,
+}) => {
+  const router = useRouter();
+
   const [isClickedAddRequidityButton, SetIsClickedAddRequidityButton] =
     useState(false);
   const [isClickedRemoveLiquidityButton, SetIsClickedRemoveLiquidityButton] =
     useState(false);
   const [isClickedSwapButton, SetIsClickedSwapButton] = useState(false);
+
+  const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
+    router.push(`/dashboard/swap/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
+  }
+
+  const handleAddLiquidity = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
+    router.push(`/dashboard/liquidity/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
+  }
   return (
     <div className="flex flex-row justify-between items-center w-full bg-[#18004A] dark:bg-[#E9E9E9] dark:border dark:border-white rounded-b-xl px-9 py-4">
       {/* Your Liquidity Amount */}
@@ -32,7 +60,7 @@ const PoolInformation = () => {
       </div>
       <div className="w-1/7 flex flex-row justify-end items-center self-center">
         <div className="px-2">
-          <Link href={"/dashboard/liquidity"}>
+          <Link href={`/dashboard/liquidity/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`}>
             <div
               className={`rounded-md border border-[#B4D2FF] px-7 py-2 whitespace-nowrap font-bold cursor-pointer dark:text-white ${
                 isClickedAddRequidityButton
@@ -41,6 +69,7 @@ const PoolInformation = () => {
               }`}
               onMouseDown={() => SetIsClickedAddRequidityButton(true)}
               onMouseUp={() => SetIsClickedAddRequidityButton(false)}
+              onClick={()=>handleAddLiquidity({nativeToken, assetToken})}
             >
               Add Liquidity
             </div>
@@ -83,6 +112,7 @@ const PoolInformation = () => {
             alt="swapdark"
             onMouseEnter={() => SetIsClickedSwapButton(true)}
             onMouseLeave={() => SetIsClickedSwapButton(false)}
+            onClick={()=>handleSwap({nativeToken, assetToken})}
           />
         </Tooltip>
       </div>
