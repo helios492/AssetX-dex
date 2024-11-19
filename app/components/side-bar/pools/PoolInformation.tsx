@@ -32,7 +32,7 @@ const PoolInformation: React.FC<PoolSelectionProps> = ({
 }) => {
   const router = useRouter();
   const [liquidity, setLiquidity] = useState<string>("0");
-  const [isClickedAddRequidityButton, SetIsClickedAddRequidityButton] =
+  const [isClickedAddliquidityButton, SetIsClickedAddliquidityButton] =
     useState(false);
   const [isClickedRemoveLiquidityButton, SetIsClickedRemoveLiquidityButton] =
     useState(false);
@@ -149,12 +149,12 @@ const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Tok
           <Link href={`/dashboard/liquidity/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}&liqA=${nativeTokens}&liqB=${assetTokens}`}>
             <div
               className={`rounded-md border border-[#B4D2FF] px-7 py-2 whitespace-nowrap font-bold cursor-pointer dark:text-white ${
-                isClickedAddRequidityButton
+                isClickedAddliquidityButton
                   ? "text-white bg-gradient-to-r from-[#E6007A] to-[#9746FF]"
                   : "bg-gradient-to-b from-[#5100FE] to-[#32009C]  hover:from-[#1C0057] hover:to-[#1A0050] "
               }`}
-              onMouseDown={() => SetIsClickedAddRequidityButton(true)}
-              onMouseUp={() => SetIsClickedAddRequidityButton(false)}
+              onMouseDown={() => SetIsClickedAddliquidityButton(true)}
+              onMouseUp={() => SetIsClickedAddliquidityButton(false)}
             >
               Add Liquidity
             </div>

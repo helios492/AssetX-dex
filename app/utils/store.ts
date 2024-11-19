@@ -26,7 +26,7 @@ export const tokenFromListAtom = atom<string>("ASX")
 
 export const tokenToListAtom = atom<string>("DOT")
 
-export const slippageValueAtom = atom<number>(0.1)
+export const slippageValueAtom = atom<number>(10)
 
 export const selectedTokensAtom = atom<SwapTokenProps>({
   tokenA: {

@@ -53,7 +53,7 @@ const TokenSelectionInput: React.FC<TokenSelectionInputProps> = ({
             className="flex flex-row gap-2 justify-start items-center cursor-pointer pr-2 border-r-2  border-[var(--text-maincolor)] dark:border-black"
             onClick={onClick}
           >
-            {(disabled && assetLoading) ? (
+            {(disabled || assetLoading) ? (
               <div className="flex w-full mx-auto place-content-center">
                 <LottieMedium />
               </div>
