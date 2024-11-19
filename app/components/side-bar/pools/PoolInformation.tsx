@@ -60,13 +60,13 @@ const getPriceOfAssetFromNative = async (value: string) => {
       value,
       nativeToken.decimals
     );
-
+    
     const assetTokenPrice = await getAssetTokenFromNativeToken(
       api,
       usdcToken[0].tokenId,
       valueWithDecimals
     );
-
+    
     if (assetTokenPrice) {
       // setLowTradingMinimum(assetTokenPrice === "0");
       const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
@@ -85,13 +85,13 @@ const getPriceOfNativeFromAsset = async (value: string, assetToken: Token) => {
       value,
       assetToken.decimals
     );
-
+    
     const nativeTokenPrice = await getNativeTokenFromAssetToken(
       api,
       assetTokenId,
       valueWithDecimals
     );
-
+    
     if (nativeTokenPrice) {
       // setLowTradingMinimum(nativeTokenPrice === "0");
       const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
@@ -99,34 +99,34 @@ const getPriceOfNativeFromAsset = async (value: string, assetToken: Token) => {
         parseFloat(nativeTokenNoSemicolons),
         nativeToken.decimals
       );
-        return nativeTokenNoDecimals.toString();
+      return nativeTokenNoDecimals.toString();
     }
   }
 };
 
-
-  const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
-    router.push(`/dashboard/swap/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
-  }
-
-  const handleAddLiquidity = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
-    router.push(`/dashboard/liquidity/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
-  }
-
-  const getLiquidity = async () => {
-    const nativeTokenPrice = await getPriceOfAssetFromNative("1");
-    const assetTokenPrice = await getPriceOfNativeFromAsset(nativeTokenPrice || "0", assetToken);
+const getLiquidity = async () => {
+  const nativeTokenPrice = await getPriceOfAssetFromNative("1");
+  console.log("usdcPrice", usdcPrice);
+  const assetTokenPrice = await getPriceOfNativeFromAsset(nativeTokenPrice || "0", assetToken);
     const liquidity = ((Number(nativeTokenPrice || 0) * Number(nativeTokens)) + (Number(assetTokenPrice || 0) * Number(assetTokens))).toString();
     console.log("nativeTokenPrice", nativeTokenPrice)
     setLiquidity(parseFloat(liquidity).toFixed(2));
   }
   
   useEffect(() => {
-    if(nativeToken && assetToken && nativeTokens && assetTokens){
+    if(nativeToken && assetToken && nativeTokens && assetTokens && usdcPrice){
       getLiquidity();
-      console.log("nativeToken, assetToken, nativeTokens, assetTokens", nativeToken, assetToken, nativeTokens, assetTokens);
     }
-  }, [nativeToken, assetToken, nativeTokens, assetTokens]);
+  }, [nativeToken, assetToken, nativeTokens, assetTokens, usdcPrice]);
+
+const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
+  router.push(`/dashboard/swap/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
+}
+
+const handleAddLiquidity = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
+  router.push(`/dashboard/liquidity/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
+}
+
   
   return (
     <div className="flex flex-row justify-between items-center w-full bg-[#18004A] dark:bg-[#E9E9E9] dark:border dark:border-white rounded-b-xl px-9 py-4">
@@ -140,8 +140,8 @@ const getPriceOfNativeFromAsset = async (value: string, assetToken: Token) => {
       <div className="w-1/7" />
       <div className="w-1/7 py-4">
         <p>Assets Pooled</p>
-        <p className="font-bold text-white dark:text-[#5100FE]">{parseFloat(nativeTokens).toFixed(3)} DOT</p>
-        <p className="font-bold text-white dark:text-[#5100FE]">{parseFloat(assetTokens).toFixed(3)} ASX</p>
+        <p className="font-bold text-white dark:text-[#5100FE]">{parseFloat(nativeTokens).toFixed(3)} {nativeToken.symbol}</p>
+        <p className="font-bold text-white dark:text-[#5100FE]">{parseFloat(assetTokens).toFixed(3)} {assetToken.symbol}</p>
       </div>
       <div className="w-1/7" />
       <div className="w-1/7 py-4 ">
