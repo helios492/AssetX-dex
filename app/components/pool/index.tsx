@@ -213,15 +213,18 @@ export default function Pools() {
                 }`}
             >
               {poolsCards.map((item: PoolCardProps, index: number) => (
-                <PoolSelection
-                  key={index}
-                  tokenPair={item.name}
-                  nativeToken={item.totalTokensLocked.nativeToken}
-                  assetToken={item.totalTokensLocked.assetToken}
-                  lpTokenAsset={item.lpTokenAsset}
-                  assetTokenId={item.assetTokenId}
-                  lpTokenId={item.lpTokenId}
-                />
+                <div key={index}>
+                  <PoolSelection
+                    tokenPair={item.name}
+                    nativeTokens={item.totalTokensLocked.nativeToken.formattedValue}
+                    assetTokens={item.totalTokensLocked.assetToken.formattedValue}
+                    lpTokenAsset={item.lpTokenAsset}
+                    assetToken={item.totalTokensLocked.assetToken}
+                    nativeToken={item.totalTokensLocked.nativeToken}
+                    assetTokenId={item.assetTokenId}
+                    lpTokenId={item.lpTokenId}
+                  />
+                </div>
               ))}
               {/* {sortedByNonStarPoolInfo.map((pool) => (
                 <PoolSelection

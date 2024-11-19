@@ -14,20 +14,24 @@ import Image from "next/image";
 import TokenIcon from "../../token-icon";
 interface PoolSelectionProps {
   tokenPair: string;
+  nativeTokens: string;
   nativeToken: Token;
+  assetTokens: string;
   assetToken: Token;
   lpTokenAsset: LpTokenAsset | null;
   assetTokenId: string;
   lpTokenId: string | null;
 }
-const PoolSelection: React.FC<PoolSelectionProps> = ({
+const PoolSelection = ({
   tokenPair,
+  nativeTokens,
+  assetTokens,
+  lpTokenAsset,
   nativeToken,
   assetToken,
-  lpTokenAsset,
   assetTokenId,
   lpTokenId,
-}) => {
+}: PoolSelectionProps) => {
   const [isClicked, setIsClicked] = useState(false);
   const [themeDark] = useAtom(themeDarkAtom);
 
@@ -165,6 +169,8 @@ const PoolSelection: React.FC<PoolSelectionProps> = ({
           lpTokenAsset={lpTokenAsset}
           assetTokenId={assetTokenId}
           lpTokenId={lpTokenId}
+          nativeTokens={nativeTokens}
+          assetTokens={assetTokens}
         />
         : null}
     </div>
