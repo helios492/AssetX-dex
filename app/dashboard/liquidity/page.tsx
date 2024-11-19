@@ -8,8 +8,8 @@ export default function Liquidity() {
 
   const tokenASymbol = searchParams.get('tokenA');
   const tokenBSymbol = searchParams.get('tokenB');
-
-  console.log("tokenASymbol", tokenASymbol, "tokenBSymbol", tokenBSymbol)
+  const nativeTokens = searchParams.get('liqA');
+  const assetTokens = searchParams.get('liqB');
   
   return (
     <div className="flex flex-col justify-start min-w-[360px] items-center h-screen sm:h-[calc(100vh-90px)] pt-[20%] pb-[30%] sm:pb-[10%] sm:pt-16 gap-6 sm:gap-10 text-[var(--text-maincolor)] dark:text-[#120038] overflow-auto">
@@ -32,9 +32,11 @@ export default function Liquidity() {
       <CreatePool
       tokenASymbol = {tokenASymbol || ''}
       tokenBSymbol = {tokenBSymbol || ''}
+      nativeTokens = {nativeTokens || ''}
+      assetTokens = {assetTokens || ''}
       />
       :
-      <CreatePool tokenASymbol={""} tokenBSymbol={""}/>}
+      <CreatePool tokenASymbol={""} tokenBSymbol={""} nativeTokens={""} assetTokens={""}/>}
     </div>
   )
 }
