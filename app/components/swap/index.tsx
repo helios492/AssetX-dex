@@ -133,10 +133,6 @@ export default function Swap() {
   const tokenBSymbol = searchParams.get('tokenB');
 
   useEffect(() => {
-    console.log("toleranceState====================>", slippageValue);
-  }, [slippageValue])
-
-  useEffect(() => {
     if (tokenASymbol && tokenBSymbol) {
       const tokenA = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenASymbol?.toLowerCase())
       const tokenB = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenBSymbol?.toLowerCase())

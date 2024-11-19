@@ -3,10 +3,16 @@ import type { AnyJson } from "@polkadot/types/types/codec";
 import { u8aToHex } from "@polkadot/util";
 import Decimal from "decimal.js";
 import useGetNetwork from "@/app/hooks/useGetNetwork";
-import { formatDecimalsFromToken } from "@/app/utils/helper";
+import { formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
+import { useAppContext } from "@/app/state/hook";
+import { useEffect, useState } from "react";
+import { PoolsTokenMetadata, Token } from "@/app/types";
+import axios from "axios";
+import { InputEditedType } from "@/app/types/enum";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 const { parents } = useGetNetwork();
+
 
 export const getAssetTokenFromNativeToken = async (
   api: ApiPromise,
@@ -358,3 +364,5 @@ export const findOptimalTokenA = async ({
 
   return result;
 };
+
+

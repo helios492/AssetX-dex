@@ -621,12 +621,14 @@ export const createPoolCardsArray = async (
                   formattedValue: nativeTokenFormatted,
                   value: nativeToken,
                   symbol: nativeTokenSymbol,
+                  icon: ""
                 },
                 assetToken: {
                   decimals: assetTokenDecimals,
                   formattedValue: assetTokenFormated,
                   value: assetToken,
                   symbol: assetTokenMetadata.toHuman()?.symbol,
+                  icon: ""
                 },
               },
             });

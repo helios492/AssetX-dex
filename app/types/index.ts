@@ -68,6 +68,7 @@ export type TokenDecimalsErrorProps = {
 
 export type Token = {
   id?: string;
+  icon: string;
   value: string;
   symbol: string;
   decimals: string;
