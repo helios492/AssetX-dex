@@ -96,11 +96,11 @@ const TokenSelectionInput: React.FC<TokenSelectionInputProps> = ({
         </div>
         <div className="flex flex-col gap-2 w-2/3 justify-end items-center pb-2 text-sm sm:text-lg">
           <p className="font-medium text-xs md:text-base">
-            Balance: {walletConnected ? (
+            Balance: {walletConnected && (
               tokenId && tokenText && Number(tokenBalance) !== 0
                 ? formatDecimalsFromToken(Number(tokenBalance?.replace(/[, ]/g, "")), tokenDecimals as string)
                 : tokenBalance ?? "0"
-            ) : "Wallet not connected"}
+            )}
           </p>
           <div className="flex flex-row justify-end items-end gap-2">
             <input
