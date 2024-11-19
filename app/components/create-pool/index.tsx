@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { FC, useEffect, useMemo, useState } from "react";
 import AddPoolLiquidity from "../add-pool-liquidity";
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { getAssetTokenFromNativeToken, getNativeTokenFromAssetToken } from "@/app/services/tokenServices";
 
 type AssetTokenProps = {
   tokenSymbol: string;
@@ -93,6 +94,7 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSel
   const [assetTokenMinValueExceeded, setAssetTokenMinValueExceeded] = useState<boolean>(false);
   const [assetTokenMinValue, setAssetTokenMinValue] = useState<string>("");
   const [reviewModalOpen, setReviewModalOpen] = useState<boolean>(false);
+  const [nativeTokenValue, setNativeTokenValue] = useState<string>("");
   const [tooManyDecimalsError, setTooManyDecimalsError] = useState<TokenDecimalsErrorProps>({
     tokenSymbol: "",
     isError: false,
@@ -178,6 +180,36 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSel
       })
     }
   }, [tokenASymbol, tokenBSymbol, poolsTokenMetadata, nativeToken])
+
+  useEffect(() => {
+    if (selectedTokenB.assetTokenId) {
+      getPriceOfNativeFromAsset();
+    }
+  }, [selectedTokenB.assetTokenId]);
+
+  const getPriceOfNativeFromAsset = async () => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        "1",
+        selectedTokenB.decimals
+      );
+
+      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+        api,
+        selectedTokenB.assetTokenId,
+        valueWithDecimals
+      );
+
+      if (nativeTokenPrice) {
+        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+        const nativeTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(nativeTokenNoSemicolons),
+          nativeToken.assetTokenMetadata.decimals
+        );
+          setNativeTokenValue(nativeTokenNoDecimals.toString());
+      }
+    }
+  };
 
   const selectedNativeTokenNumber = new Decimal(selectedTokenNativeValue?.tokenValue || 0);
   const selectedAssetTokenNumber = new Decimal(selectedTokenAssetValue?.tokenValue || 0);
@@ -543,7 +575,7 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSel
             <div className="flex flex-row justify-between">
               <p>Current Price </p>
               <p className="dark:text-[#5100FE] text-white">
-                1 {selectedTokenA.nativeTokenSymbol} = 888 {selectedTokenB.tokenSymbol}
+                1 {selectedTokenA.nativeTokenSymbol} = {nativeTokenValue} {selectedTokenB.tokenSymbol}
               </p>
             </div>
             <div className="flex flex-row justify-between">
