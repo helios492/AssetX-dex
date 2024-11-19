@@ -36,7 +36,6 @@ const SelectTokenModal: FC<SwapSelectTokenModalProps> = ({
   onClose,
   onSelect,
 }) => {
-  console.log("tokensData", tokensData);
   const [isCopied, setIsCopied] = useState(0);
   const [themeDark] = useAtom(themeDarkAtom);
   const [searchQuery, setSearchQuery] = useState("");

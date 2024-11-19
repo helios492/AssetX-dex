@@ -11,7 +11,7 @@ const Settings = () => {
       if (viewModal) setViewModal("");
     }
   };
-  const slippage_tolerance = ["0.1", "0.3", "0.5"];
+  const slippage_tolerance = ["10", "30", "50"];
   const trasaction_priority = [
     {
       name: "Auto",
