@@ -41,10 +41,13 @@ type TokenValueProps = {
 
 type AddPoolLiquidityProps = {
   tokenBId?: { id: string };
+  nativeTokenValue: string;
+  nativeTokens: string;
+  assetTokens: string;
 };
 
 
-const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquidityProps) => {
+const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValue, nativeTokens, assetTokens}: AddPoolLiquidityProps) => {
   const { state, dispatch } = useAppContext();
   const { assethubSubscanUrl } = useGetNetwork();
 
@@ -500,7 +503,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   }, [addLiquidityLoading]);
 
   return tokenBId?.id && poolExists === false ? (
-    <CreatePool tokenBSelected={selectedTokenB} tokenASymbol={""} tokenBSymbol={""} />
+    <CreatePool tokenBSelected={selectedTokenB} tokenASymbol={""} tokenBSymbol={""} nativeTokens={""} assetTokens={""} />
   ) : (
     <>
       <div className="sm:w-[540px] w-[95%] rounded-2xl sm:rounded-[50px] sm:box-shadow-out bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-b dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">
@@ -547,11 +550,11 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
             </div>
             <div className="flex flex-row justify-between">
               <p>Pool liquidity ({selectedTokenA.nativeTokenSymbol})</p>
-              <p className="dark:text-[#5100FE] text-white">_ _</p>
+              <p className="dark:text-[#5100FE] text-white">{parseFloat(nativeTokens).toFixed(3)}</p>
             </div>
             <div className="flex flex-row justify-between">
               <p>Pool liquidity ({selectedTokenB.tokenSymbol})</p>
-              <p className="dark:text-[#5100FE] text-white">_ _</p>
+              <p className="dark:text-[#5100FE] text-white">{parseFloat(assetTokens).toFixed(3)}</p>
             </div>
             <div className="flex flex-row justify-between">
               <p>LP supply</p>
@@ -569,7 +572,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
             <div className="flex flex-row justify-between">
               <p>Current Price </p>
               <p className="dark:text-[#5100FE] text-white">
-                1 {selectedTokenA.nativeTokenSymbol} = {assetBPriceOfOneAssetA} {selectedTokenB.tokenSymbol}
+                1 {selectedTokenA.nativeTokenSymbol} = {parseFloat(nativeTokenValue).toFixed(2)} {selectedTokenB.tokenSymbol}
               </p>
             </div>
             <div className="flex flex-row justify-between">

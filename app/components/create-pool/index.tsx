@@ -46,11 +46,13 @@ type TokenValueProps = {
 type CreatePoolProps = {
   tokenASymbol: string;
   tokenBSymbol: string;
+  nativeTokens: string;
+  assetTokens: string;
   tokenBSelected?: AssetTokenProps;
 };
 
 
-const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSelected }) => {
+const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTokens, assetTokens, tokenBSelected }) => {
   const { state, dispatch } = useAppContext();
   const { assethubSubscanUrl, rpcUrl } = useGetNetwork();
 
@@ -183,30 +185,31 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSel
 
   useEffect(() => {
     if (selectedTokenB.assetTokenId) {
-      getPriceOfNativeFromAsset();
+      getPriceOfAssetFromNative();
     }
   }, [selectedTokenB.assetTokenId]);
 
-  const getPriceOfNativeFromAsset = async () => {
+  const getPriceOfAssetFromNative = async () => {
     if (api) {
       const valueWithDecimals = formatInputTokenValue(
         "1",
-        selectedTokenB.decimals
+        nativeToken.assetTokenMetadata.decimals
       );
 
-      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
         api,
         selectedTokenB.assetTokenId,
         valueWithDecimals
       );
 
-      if (nativeTokenPrice) {
-        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
-        const nativeTokenNoDecimals = formatDecimalsFromToken(
-          parseFloat(nativeTokenNoSemicolons),
-          nativeToken.assetTokenMetadata.decimals
+      if (assetTokenPrice) {
+        // setLowTradingMinimum(assetTokenPrice === "0");
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          selectedTokenB.decimals
         );
-          setNativeTokenValue(nativeTokenNoDecimals.toString());
+        setNativeTokenValue((Number(assetTokenNoDecimals)).toString());
       }
     }
   };
@@ -504,7 +507,12 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSel
   }, [createPoolLoading]);
 
   return poolExists ? (
-    <AddPoolLiquidity tokenBId={{ id: selectedTokenB.assetTokenId }} />
+    <AddPoolLiquidity 
+    tokenBId={{ id: selectedTokenB.assetTokenId }} 
+    nativeTokenValue = {nativeTokenValue}
+    nativeTokens = {nativeTokens}
+    assetTokens = {assetTokens}
+    />
   ) : (
     <>
       <div className="sm:w-[540px] w-[95%] rounded-2xl sm:rounded-[50px] sm:box-shadow-out bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-b dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">
@@ -575,7 +583,7 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, tokenBSel
             <div className="flex flex-row justify-between">
               <p>Current Price </p>
               <p className="dark:text-[#5100FE] text-white">
-                1 {selectedTokenA.nativeTokenSymbol} = {nativeTokenValue} {selectedTokenB.tokenSymbol}
+                1 {selectedTokenA.nativeTokenSymbol} = {nativeTokenValue} + {selectedTokenB.tokenSymbol}
               </p>
             </div>
             <div className="flex flex-row justify-between">
