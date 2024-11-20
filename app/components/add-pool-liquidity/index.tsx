@@ -13,7 +13,7 @@ import { setTokenBalanceUpdate } from "@/app/services/polkadotWalletServices";
 import { addLiquidity, checkAddPoolLiquidityGasFee, getPoolReserves } from "@/app/services/poolServices";
 import { getAssetTokenFromNativeToken, getNativeTokenFromAssetToken } from "@/app/services/tokenServices";
 import { useAppContext } from "@/app/state/hook";
-import { InputEditedProps, TokenDecimalsErrorProps } from "@/app/types";
+import { InputEditedProps, PoolCardProps, PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
 import { ActionType, InputEditedType, TransactionTypes } from "@/app/types/enum";
 import { calculateSlippageReduce, checkIfPoolAlreadyExists, convertToBaseUnit, formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
@@ -22,6 +22,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FC, useEffect, useMemo, useState } from "react";
 import CreatePool from "../create-pool";
 import Decimal from "decimal.js";
+import { ApiPromise, WsProvider } from '@polkadot/api';
 
 type AssetTokenProps = {
   tokenSymbol: string;
@@ -41,15 +42,14 @@ type TokenValueProps = {
 
 type AddPoolLiquidityProps = {
   tokenBId?: { id: string };
-  nativeTokenValue: string;
-  nativeTokens: string;
-  assetTokens: string;
 };
 
 
-const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValue, nativeTokens, assetTokens}: AddPoolLiquidityProps) => {
+const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquidityProps) => {
+  
   const { state, dispatch } = useAppContext();
-  const { assethubSubscanUrl } = useGetNetwork();
+  const { assethubSubscanUrl, rpcUrl } = useGetNetwork();
+  const [nativeTokenValue, setNativeTokenValue] = useState<string>("");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,6 +69,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValu
     exactAssetTokenAddLiquidity,
     assetLoading,
     isTokenCanNotCreateWarningPools,
+    poolsCards,
   } = state;
 
   const [selectedTokenA, setSelectedTokenA] = useState<NativeTokenProps>({
@@ -103,6 +104,67 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValu
   const [waitingForTransaction, setWaitingForTransaction] = useState<NodeJS.Timeout>();
   const [assetBPriceOfOneAssetA, setAssetBPriceOfOneAssetA] = useState<string>("");
   const [priceImpact, setPriceImpact] = useState<string>("");
+  const [pool, setPool] = useState<PoolCardProps>();
+  const [nativeTokens, setNativeTokens] = useState<string>("");
+  const [assetTokens, setAssetTokens] = useState<string>("");
+  const [native_Token, setNative_Token] = useState<PoolsTokenMetadata[]>([{
+    tokenId: "",
+    assetTokenMetadata: {
+      symbol: tokenBalances?.tokenSymbol as string,
+      name: tokenBalances?.tokenSymbol as string,
+      decimals: tokenBalances?.tokenDecimals as string,
+    },
+    tokenAsset: {
+      balance: tokenBalances?.balance,
+    },
+  }])
+
+  const nativeToken = native_Token[0];
+
+  useEffect(() => {
+    if (tokenBalances) {
+      setNative_Token([{
+        tokenId: "",
+        assetTokenMetadata: {
+          symbol: tokenBalances?.tokenSymbol as string,
+          name: tokenBalances?.tokenSymbol as string,
+          decimals: tokenBalances?.tokenDecimals as string,
+        },
+        tokenAsset: {
+          balance: tokenBalances?.balance,
+        },
+      }]);
+    } else {
+      const getNativeTokenInfo = async () => {
+        // Connect to the blockchain
+        const provider = new WsProvider(rpcUrl); // Use the appropriate WebSocket endpoint
+        const api = await ApiPromise.create({ provider });
+
+        // Get native token information
+        const symbols = api.registry.chainTokens; // Symbol(s) of the native token
+        const decimals = api.registry.chainDecimals; // Decimals of the native token
+
+        setNative_Token([{
+          tokenId: "",
+          assetTokenMetadata: {
+            symbol: symbols[0],
+            name: symbols[0],
+            decimals: decimals[0],
+          },
+          tokenAsset: {
+            balance: 0,
+          },
+        }]);
+
+        // Example: Get existential deposit (minimum balance)
+        const existentialDeposit = api.consts.balances.existentialDeposit.toHuman();
+        console.log('Existential Deposit:', existentialDeposit);
+
+        await api.disconnect(); // Disconnect from the chain
+      };
+      getNativeTokenInfo()
+    }
+  }, [tokenBalances])
 
   const selectedNativeTokenNumber = new Decimal(selectedTokenNativeValue?.tokenValue || 0);
   const selectedAssetTokenNumber = new Decimal(selectedTokenAssetValue?.tokenValue || 0);
@@ -110,6 +172,23 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValu
   const navigateToPools = () => {
     router.push("/dashboard/pools");
   };
+
+  useEffect(()=>{
+    console.log("selectedTokens", selectedTokenA, selectedTokenB)
+  },[selectedTokenB])
+
+  useEffect(()=>{
+    getPool();
+    if(pool !== undefined){
+      setNativeTokens(pool.totalTokensLocked.nativeToken.formattedValue)
+      setAssetTokens(pool.totalTokensLocked.assetToken.formattedValue)
+    }
+  },[pool, selectedTokenB])
+
+  const getPool = () => {
+    const pool = poolsCards.filter((item)=>item.assetTokenId === selectedTokenB.assetTokenId);
+    setPool(pool[0]);
+  }
 
   const populateAssetToken = () => {
     pools?.forEach((pool: any) => {
@@ -133,6 +212,37 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValu
         }
       }
     });
+  };
+
+    useEffect(() => {
+    if (selectedTokenB.assetTokenId) {
+      getPriceOfAssetFromNative();
+    }
+  }, [selectedTokenB.assetTokenId]);
+
+  const getPriceOfAssetFromNative = async () => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        "1",
+        nativeToken.assetTokenMetadata.decimals
+      );
+
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
+        api,
+        selectedTokenB.assetTokenId,
+        valueWithDecimals
+      );
+
+      if (assetTokenPrice) {
+        // setLowTradingMinimum(assetTokenPrice === "0");
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          selectedTokenB.decimals
+        );
+        setNativeTokenValue((Number(assetTokenNoDecimals)).toString());
+      }
+    }
   };
 
   const handlePool = async () => {
@@ -502,9 +612,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId, nativeTokenValu
     }
   }, [addLiquidityLoading]);
 
-  return tokenBId?.id && poolExists === false ? (
-    <CreatePool tokenBSelected={selectedTokenB} tokenASymbol={""} tokenBSymbol={""} nativeTokens={""} assetTokens={""} />
-  ) : (
+  return (
     <>
       <div className="sm:w-[540px] w-[95%] rounded-2xl sm:rounded-[50px] sm:box-shadow-out bg-gradient-to-r from-[#5100FE] to-[#B4D2FF] dark:bg-gradient-to-b dark:from-[#5100FE] dark:to-[#5100FE] p-0.5">
         <div className="flex flex-col gap-6 h-full w-full bg-gradient-to-br from-[#2B0281] via-[#1D0058] to-[#220068] dark:bg-gradient-to-t dark:from-[#E8E8E8] dark:to-[#E8E8E8] rounded-2xl sm:rounded-[50px] p-7 sm:p-14">

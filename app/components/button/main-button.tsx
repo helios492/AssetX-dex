@@ -12,7 +12,7 @@ export default function MainButton(props: any) {
     <button
       disabled={props.disabled}
       id="main-button"
-      className={`flex flex-row disabled:opacity-50 items-center cursor-pointer border md:text-xl font-bold pr-2 whitespace-nowrap ${isClicked
+      className={`flex flex-row disabled:opacity-50 items-center cursor-pointer border md:text-xl font-bold pr-2 w-full min-w-max whitespace-nowrap ${isClicked
           ? "from-[#E6007A] to-[#9746FF] border-white text-white"
           : "hover:from-[#3800AE] hover:to-[#210068] from-[#5200FF] to-[#310099] border-[#7BB0FF] text-[var(--text-maincolor)] dark:bg-gradient-to-b dark:from-[#5100FE] dark:to-[#32009C] dark:text-white"
         } ${props.className ? props.className : ""}`}
