@@ -12,14 +12,14 @@ import useGetNetwork from "@/app/hooks/useGetNetwork";
 import { setTokenBalanceUpdate } from "@/app/services/polkadotWalletServices";
 import { checkCreatePoolGasFee, createPool, getAllLiquidityPoolsTokensMetadata } from "@/app/services/poolServices";
 import { useAppContext } from "@/app/state/hook";
-import { PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
+import { PoolCardProps, PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
 import { ActionType, TransactionTypes } from "@/app/types/enum";
 import { calculateSlippageReduce, checkIfPoolAlreadyExists, convertToBaseUnit, formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
 import Decimal from "decimal.js";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FC, useEffect, useMemo, useState } from "react";
 import AddPoolLiquidity from "../add-pool-liquidity";
 import { ApiPromise, WsProvider } from '@polkadot/api';
@@ -44,16 +44,16 @@ type TokenValueProps = {
 };
 
 type CreatePoolProps = {
-  tokenASymbol: string;
-  tokenBSymbol: string;
-  nativeTokens: string;
-  assetTokens: string;
   tokenBSelected?: AssetTokenProps;
 };
 
 
-const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTokens, assetTokens, tokenBSelected }) => {
+const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
+  const searchParams = useSearchParams();
   const { state, dispatch } = useAppContext();
+
+  const { poolsCards } = state;
+  
   const { assethubSubscanUrl, rpcUrl } = useGetNetwork();
 
   const router = useRouter();
@@ -119,6 +119,15 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTok
 
   const nativeToken = native_Token[0];
 
+  const id = searchParams.get("id");
+  const params = {id};
+
+  useEffect(() => {
+    if (params?.id) {
+      populateAssetToken();
+    }
+  }, [params?.id]);
+
   useEffect(() => {
     if (tokenBalances) {
       setNative_Token([{
@@ -164,24 +173,31 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTok
     }
   }, [tokenBalances])
 
-  useEffect(() => {
-    if (tokenASymbol && tokenBSymbol) {
-      const tokenA = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenASymbol?.toLowerCase())
-      const tokenB = poolsTokenMetadata.concat(nativeToken).filter((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenBSymbol?.toLowerCase())
-      setSelectedTokenA({
-        nativeTokenSymbol: tokenA[0]?.assetTokenMetadata?.symbol || '',
-        nativeTokenDecimals: tokenA[0]?.assetTokenMetadata?.decimals || '',
-        tokenId: tokenA[0]?.tokenId || '',
-        tokenBalance: String(tokenA[0]?.tokenAsset?.balance || '0')
-      });
-      setSelectedTokenB({
-        tokenSymbol: tokenB[0]?.assetTokenMetadata?.symbol || '',
-        assetTokenId: tokenB[0]?.tokenId || '',
-        decimals: tokenB[0]?.assetTokenMetadata?.decimals || '',
-        assetTokenBalance: String(tokenB[0]?.tokenAsset?.balance || '0')
-      })
-    }
-  }, [tokenASymbol, tokenBSymbol, poolsTokenMetadata, nativeToken])
+  const populateAssetToken = () => {
+    pools?.forEach((pool: any) => {
+      if (pool?.[0]?.[1]?.interior?.X2) {
+        if (pool?.[0]?.[1]?.interior?.X2?.[1]?.GeneralIndex?.replace(/[, ]/g, "").toString() === params?.id) {
+          if (params?.id) {
+            const tokenAlreadySelected = tokenBalances?.assets?.find((token: any) => {
+              if (params?.id) {
+                return token.tokenId === params?.id.toString();
+              }
+            });
+            if (tokenAlreadySelected) {
+              setSelectedTokenB({
+                tokenSymbol: tokenAlreadySelected?.assetTokenMetadata?.symbol,
+                assetTokenId: params?.id,
+                decimals: tokenAlreadySelected?.assetTokenMetadata?.decimals,
+                assetTokenBalance: tokenAlreadySelected?.tokenAsset?.balance,
+              });
+            } else {
+              router.push("/dashboard/pools")
+            }
+          }
+        }
+      }
+    });
+  };
 
   useEffect(() => {
     if (selectedTokenB.assetTokenId) {
@@ -449,13 +465,10 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTok
   }, [tokenBalances?.assets]);
 
   useEffect(() => {
-    const poolExists = checkIfPoolAlreadyExists(selectedTokenB.assetTokenId, pools);
-    setPoolExists(poolExists);
-  }, [selectedTokenB.assetTokenId]);
-
-  useEffect(() => {
     if (selectedTokenB.assetTokenId) {
       handlePoolGasFee();
+      const poolExists = checkIfPoolAlreadyExists(selectedTokenB.assetTokenId, pools);
+      setPoolExists(poolExists);
     }
   }, [selectedTokenB.assetTokenId]);
 
@@ -509,9 +522,6 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTok
   return poolExists ? (
     <AddPoolLiquidity 
     tokenBId={{ id: selectedTokenB.assetTokenId }} 
-    nativeTokenValue = {nativeTokenValue}
-    nativeTokens = {nativeTokens}
-    assetTokens = {assetTokens}
     />
   ) : (
     <>
@@ -583,7 +593,7 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenASymbol, tokenBSymbol, nativeTok
             <div className="flex flex-row justify-between">
               <p>Current Price </p>
               <p className="dark:text-[#5100FE] text-white">
-                1 {selectedTokenA.nativeTokenSymbol} = {nativeTokenValue} + {selectedTokenB.tokenSymbol}
+                1 {selectedTokenA.nativeTokenSymbol} = {nativeTokenValue} {selectedTokenB.tokenSymbol}
               </p>
             </div>
             <div className="flex flex-row justify-between">
