@@ -735,12 +735,16 @@ export default function Swap() {
         }
       });
 
+      
+      
       const tokens = tokenBalances ? tokenBalances?.assets?.filter((item: any) => poolsAssetTokenIds.includes(item.tokenId)) : poolLiquidTokens;
+      
 
-      const assetTokens = [nativeToken]
-        .concat(tokens)
-        ?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
+      // const assetTokens = [nativeToken]
+      //   .concat(tokens)
+      //   ?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
 
+        const assetTokens = tokens?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
       const poolTokenPairsArray: any[] = [];
 
       await Promise.all(
