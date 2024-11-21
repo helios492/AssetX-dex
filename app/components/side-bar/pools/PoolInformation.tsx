@@ -7,7 +7,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getAssetTokenFromNativeToken, getNativeTokenFromAssetToken} from "@/app/services/tokenServices";
 import axios from "axios";
 import { useAppContext } from "@/app/state/hook";
-import { formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
+import { calculateSlippageReduce, formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
+import { getPoolReserves } from "@/app/services/poolServices";
+import { useAtom } from "jotai";
+import { slippageValueAtom } from "@/app/utils/store";
+import Decimal from "decimal.js";
 
 interface PoolSelectionProps {
   tokenPair: string;
@@ -19,6 +23,10 @@ interface PoolSelectionProps {
   nativeTokens: string;
   assetTokens: string;
 }
+
+type TokenValueProps = {
+  tokenValue: string;
+};
 
 const PoolInformation: React.FC<PoolSelectionProps> = ({
   tokenPair,
@@ -37,9 +45,13 @@ const PoolInformation: React.FC<PoolSelectionProps> = ({
   const [isClickedRemoveLiquidityButton, SetIsClickedRemoveLiquidityButton] =
     useState(false);
   const [isClickedSwapButton, SetIsClickedSwapButton] = useState(false);
+  const [slippageValue, setSlippageValue] = useAtom(slippageValueAtom);
   const { state, dispatch } = useAppContext();
-  const {poolsTokenMetadata, api, tokenBalances} = state;
+  const {poolsTokenMetadata, api, tokenBalances, selectedAccount} = state;
   const [usdcPrice, setUsdcPrice] = useState<string>("");
+  const [lpTokensAmountToBurn, setLpTokensAmountToBurn] = useState<string>("");
+  const [selectedTokenNativeValue, setSelectedTokenNativeValue] = useState<TokenValueProps>();
+  const [selectedTokenAssetValue, setSelectedTokenAssetValue] = useState<TokenValueProps>();
 
 useEffect(() => {
   const fetchQuotes = async () => {
@@ -106,18 +118,67 @@ const getPriceOfNativeFromAsset = async (value: string, assetToken: Token) => {
 
 const getLiquidity = async () => {
   const nativeTokenPrice = await getPriceOfAssetFromNative("1");
-  console.log("usdcPrice", usdcPrice);
   const assetTokenPrice = await getPriceOfNativeFromAsset(nativeTokenPrice || "0", assetToken);
-    const liquidity = ((Number(nativeTokenPrice || 0) * Number(nativeTokens)) + (Number(assetTokenPrice || 0) * Number(assetTokens))).toString();
-    console.log("nativeTokenPrice", nativeTokenPrice)
+  console.log("usdcPrice", nativeTokenPrice, assetTokenPrice, selectedTokenNativeValue?.tokenValue, selectedTokenAssetValue?.tokenValue);  
+    const liquidity = ((Number(nativeTokenPrice || 0) * Number(selectedTokenNativeValue?.tokenValue)) + (Number(assetTokenPrice || 0) * Number(selectedTokenAssetValue?.tokenValue))).toString();
     setLiquidity(parseFloat(liquidity).toFixed(2));
   }
+
+  const getNativeAndAssetTokensFromPool = async () => {
+    if (api) {
+      const res: any = await getPoolReserves(api, assetTokenId);
+      const lpTokenTotalAsset: any = await api.query.poolAssets.asset(lpTokenId);
+
+      const lpTotalAssetSupply = lpTokenTotalAsset.toHuman()?.supply?.replace(/[, ]/g, "");
+
+      const lpTokenUserAccount = await api.query.poolAssets.account(
+        lpTokenId,
+        selectedAccount?.address
+      );
+
+      const lpTokenUserAsset = lpTokenUserAccount.toHuman() as LpTokenAsset;
+      const lpTokenUserAssetBalance = parseInt(lpTokenUserAsset?.balance?.replace(/[, ]/g, ""));
+
+      setLpTokensAmountToBurn(lpTokenUserAssetBalance.toFixed(0));
+
+      
+      if (res && slippageValue) {
+        const nativeTokenInPool = new Decimal(res[0]?.replace(/[, ]/g, ""));
+        const nativeTokenOut = nativeTokenInPool
+        .mul(new Decimal(lpTokenUserAssetBalance).toNumber())
+        .dividedBy(new Decimal(lpTotalAssetSupply).toNumber())
+        .floor();
+        
+        const assetInPool = new Decimal(res[1]?.replace(/[, ]/g, ""));
+        const assetOut = assetInPool
+        .mul(new Decimal(lpTokenUserAssetBalance).toNumber())
+        .dividedBy(new Decimal(lpTotalAssetSupply).toNumber())
+        .floor();
+        
+        console.log("nativeToken?.decimals", nativeToken?.decimals)
+        setSelectedTokenNativeValue({
+          tokenValue: formatDecimalsFromToken(nativeTokenOut, nativeToken?.decimals),
+        });
+
+        setSelectedTokenAssetValue({
+          tokenValue: formatDecimalsFromToken(assetOut, assetToken?.decimals),
+        });
+      }
+    }
+  };
+
+  useEffect(()=>{
+    if(lpTokenId !== null){
+      getNativeAndAssetTokensFromPool();
+    }
+  },[lpTokenId])
   
   useEffect(() => {
-    if(nativeToken && assetToken && nativeTokens && assetTokens && usdcPrice){
+    if(selectedTokenAssetValue && selectedTokenNativeValue && usdcPrice){
       getLiquidity();
     }
-  }, [nativeToken, assetToken, nativeTokens, assetTokens, usdcPrice]);
+
+  }, [selectedTokenAssetValue, selectedTokenNativeValue, usdcPrice]);
 
 const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Token}) => {
   router.push(`/dashboard/swap/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
@@ -132,7 +193,7 @@ const onWithdrawClick = () => {
       {/* Your Liquidity Amount */}
       <div className="w-1/7 py-4">
         <p>Your Liquidiy</p>
-        <p className="text-white dark:text-[#5100FE] font-bold">${liquidity}</p>
+        <p className="text-white dark:text-[#5100FE] font-bold">{liquidity === "NaN" ? "- -" : "$" + liquidity}</p>
         <p>{lpTokenAsset?.balance ? lpTokenAsset.balance?.replace(/[, ]/g, "") : 0} LP</p>
       </div>
 

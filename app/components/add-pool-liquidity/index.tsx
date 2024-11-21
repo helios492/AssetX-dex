@@ -23,6 +23,8 @@ import { FC, useEffect, useMemo, useState } from "react";
 import CreatePool from "../create-pool";
 import Decimal from "decimal.js";
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { slippageValueAtom } from "@/app/utils/store";
+import { useAtom } from "jotai";
 
 type AssetTokenProps = {
   tokenSymbol: string;
@@ -94,8 +96,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   const [withdrawAmountPercentage, setWithdrawAmountPercentage] = useState<number>(100);
   const [minimumTokenAmountExceeded, setMinimumTokenAmountExceeded] = useState<boolean>(false);
   const [maxPercentage, setMaxPercentage] = useState<number>(100);
-  const [slippageAuto, setSlippageAuto] = useState<boolean>(true);
-  const [slippageValue, setSlippageValue] = useState<number | undefined>(15);
+  const [slippageValue, setSlippageValue] = useAtom(slippageValueAtom);
   const [inputEdited, setInputEdited] = useState<InputEditedProps>({ inputType: InputEditedType.exactIn });
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [poolExists, setPoolExists] = useState<boolean>(false);
