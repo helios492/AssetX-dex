@@ -123,6 +123,10 @@ const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Tok
   router.push(`/dashboard/swap/?tokenA=${nativeToken.symbol}&tokenB=${assetToken.symbol}`)
 }
 
+const onWithdrawClick = () => {
+  router.push(`/dashboard/liquidity?id=${assetTokenId}&lp=${lpTokenId}`)
+}
+
   return (
     <div className="flex flex-row justify-between items-center w-full bg-[#18004A] dark:bg-[#E9E9E9] dark:border dark:border-white rounded-b-xl px-9 py-4">
       {/* Your Liquidity Amount */}
@@ -182,6 +186,7 @@ const handleSwap = ({nativeToken, assetToken}:{nativeToken:Token, assetToken:Tok
             alt="subtract"
             onMouseEnter={() => SetIsClickedRemoveLiquidityButton(true)}
             onMouseLeave={() => SetIsClickedRemoveLiquidityButton(false)}
+            onClick={() => onWithdrawClick()}
           />
         </Tooltip>
         <Tooltip content="Swap" direction="top">

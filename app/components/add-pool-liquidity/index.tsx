@@ -10,12 +10,12 @@ import SwapPoolResultModal from "@/app/components/swap-pool-result-modal";
 import WarningMessage from "@/app/components/warning-message";
 import useGetNetwork from "@/app/hooks/useGetNetwork";
 import { setTokenBalanceUpdate } from "@/app/services/polkadotWalletServices";
-import { addLiquidity, checkAddPoolLiquidityGasFee, getPoolReserves } from "@/app/services/poolServices";
+import { addLiquidity, checkAddPoolLiquidityGasFee, getPoolReserves, removeLiquidity } from "@/app/services/poolServices";
 import { getAssetTokenFromNativeToken, getNativeTokenFromAssetToken } from "@/app/services/tokenServices";
 import { useAppContext } from "@/app/state/hook";
-import { InputEditedProps, PoolCardProps, PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
+import { InputEditedProps, LpTokenAsset, PoolCardProps, PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
 import { ActionType, InputEditedType, TransactionTypes } from "@/app/types/enum";
-import { calculateSlippageReduce, checkIfPoolAlreadyExists, convertToBaseUnit, formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
+import { calculateSlippageReduce, checkIfPoolAlreadyExists, convertToBaseUnit, formatDecimalsFromToken, formatInputTokenValue, truncateDecimalNumber } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -54,6 +54,8 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const lpTokenId = searchParams.get("lp");
+  console.log("lpTokenId", lpTokenId)
   const params = tokenBId ? tokenBId : { id };
 
   const {
@@ -88,6 +90,10 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   const [selectedTokenAssetValue, setSelectedTokenAssetValue] = useState<TokenValueProps>();
   const [nativeTokenWithSlippage, setNativeTokenWithSlippage] = useState<TokenValueProps>({ tokenValue: "" });
   const [assetTokenWithSlippage, setAssetTokenWithSlippage] = useState<TokenValueProps>({ tokenValue: "" });
+  const [lpTokensAmountToBurn, setLpTokensAmountToBurn] = useState<string>("");
+  const [withdrawAmountPercentage, setWithdrawAmountPercentage] = useState<number>(100);
+  const [minimumTokenAmountExceeded, setMinimumTokenAmountExceeded] = useState<boolean>(false);
+  const [maxPercentage, setMaxPercentage] = useState<number>(100);
   const [slippageAuto, setSlippageAuto] = useState<boolean>(true);
   const [slippageValue, setSlippageValue] = useState<number | undefined>(15);
   const [inputEdited, setInputEdited] = useState<InputEditedProps>({ inputType: InputEditedType.exactIn });
@@ -120,6 +126,12 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   }])
 
   const nativeToken = native_Token[0];
+  
+  useEffect(() => {
+    if(lpTokenId !== null){
+      getNativeAndAssetTokensFromPool();
+    }
+  }, [slippageValue, selectedTokenB.assetTokenId, selectedTokenNativeValue?.tokenValue, withdrawAmountPercentage, lpTokenId]);
 
   useEffect(() => {
     if (tokenBalances) {
@@ -247,10 +259,32 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
 
   const handlePool = async () => {
     setReviewModalOpen(false);
+    const lpToken = Math.floor(Number(lpTokensAmountToBurn) * (withdrawAmountPercentage / 100)).toString();
     if (waitingForTransaction) {
       clearTimeout(waitingForTransaction);
     }
     setIsTransactionTimeout(false);
+
+    if(lpToken) {
+      try {
+        if (api) {
+          await removeLiquidity(
+            api,
+            selectedTokenB.assetTokenId,
+            selectedAccount,
+            lpToken,
+            nativeTokenWithSlippage.tokenValue.toString(),
+            assetTokenWithSlippage.tokenValue.toString(),
+            selectedTokenA.nativeTokenDecimals,
+            selectedTokenB.decimals,
+            dispatch
+          );
+        }
+      } catch (error) {
+        dotAcpToast.error(`Error: ${error}`);
+      }
+    }
+
     if (api && selectedTokenNativeValue && selectedTokenAssetValue) {
       const nativeTokenValue = formatInputTokenValue(selectedNativeTokenNumber, selectedTokenA?.nativeTokenDecimals)
         .toLocaleString()
@@ -277,6 +311,115 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
         dotAcpToast.error(`Error: ${error}`);
       }
     }
+  };
+
+  const getNativeAndAssetTokensFromPool = async () => {
+    if (api) {
+      const res: any = await getPoolReserves(api, selectedTokenB.assetTokenId);
+
+      const assetTokenInfo: any = await api.query.assets.asset(selectedTokenB.assetTokenId);
+      const assetTokenInfoMinBalance = assetTokenInfo?.toHuman()?.minBalance?.replace(/[, ]/g, "");
+      const nativeTokenExistentialDeposit = tokenBalances?.existentialDeposit.replace(/[, ]/g, "");
+      const lpTokenTotalAsset: any = await api.query.poolAssets.asset(lpTokenId);
+
+      const lpTotalAssetSupply = lpTokenTotalAsset.toHuman()?.supply?.replace(/[, ]/g, "");
+
+      const lpTokenUserAccount = await api.query.poolAssets.account(
+        lpTokenId,
+        selectedAccount?.address
+      );
+
+      const lpTokenUserAsset = lpTokenUserAccount.toHuman() as LpTokenAsset;
+      const lpTokenUserAssetBalance = parseInt(lpTokenUserAsset?.balance?.replace(/[, ]/g, ""));
+
+      setLpTokensAmountToBurn(lpTokenUserAssetBalance.toFixed(0));
+
+      if (res && slippageValue) {
+        const nativeTokenInPool = new Decimal(res[0]?.replace(/[, ]/g, ""));
+        const nativeTokenOut = nativeTokenInPool
+          .mul(new Decimal(lpTokenUserAssetBalance).toNumber())
+          .dividedBy(new Decimal(lpTotalAssetSupply).toNumber())
+          .floor();
+
+        const assetInPool = new Decimal(res[1]?.replace(/[, ]/g, ""));
+        const assetOut = assetInPool
+          .mul(new Decimal(lpTokenUserAssetBalance).toNumber())
+          .dividedBy(new Decimal(lpTotalAssetSupply).toNumber())
+          .floor();
+
+        const nativeTokenOutFormatted = new Decimal(
+          formatDecimalsFromToken(nativeTokenOut, selectedTokenA?.nativeTokenDecimals)
+        )
+          .mul(withdrawAmountPercentage)
+          .div(100);
+        const assetOutFormatted = new Decimal(formatDecimalsFromToken(assetOut, selectedTokenB?.decimals))
+          .mul(withdrawAmountPercentage)
+          .div(100);
+
+        const nativeTokenOutSlippage = calculateSlippageReduce(nativeTokenOutFormatted, slippageValue);
+        const nativeTokenOutSlippageFormatted = formatInputTokenValue(
+          nativeTokenOutSlippage,
+          selectedTokenA?.nativeTokenDecimals
+        );
+
+        const assetOutSlippage = calculateSlippageReduce(assetOutFormatted, slippageValue);
+        const assetOutSlippageFormatted = formatInputTokenValue(assetOutSlippage, selectedTokenB?.decimals);
+
+        const minimumTokenAmountExceededCheck =
+          assetInPool.sub(assetOut.mul(withdrawAmountPercentage).div(100)).lte(assetTokenInfoMinBalance) ||
+          nativeTokenInPool
+            .sub(nativeTokenOut.mul(withdrawAmountPercentage).div(100))
+            .lte(nativeTokenExistentialDeposit || 0);
+        const nativeMinimumTokenAmountExceededCheck =
+          assetInPool.sub(assetOut).lessThanOrEqualTo(assetTokenInfoMinBalance) ||
+          nativeTokenInPool.sub(nativeTokenOut).lessThanOrEqualTo(nativeTokenExistentialDeposit || 0);
+
+        setMinimumTokenAmountExceeded(minimumTokenAmountExceededCheck);
+
+        setSelectedTokenNativeValue({
+          tokenValue: formatDecimalsFromToken(nativeTokenOut, selectedTokenA?.nativeTokenDecimals),
+        });
+
+        setNativeTokenWithSlippage({ tokenValue: nativeTokenOutSlippageFormatted });
+
+        setSelectedTokenAssetValue({
+          tokenValue: formatDecimalsFromToken(assetOut, selectedTokenB?.decimals),
+        });
+        setAssetTokenWithSlippage({ tokenValue: assetOutSlippageFormatted });
+
+        const max = calculateMaxPercent(
+          selectedTokenNativeValue?.tokenValue || "0",
+          selectedTokenAssetValue?.tokenValue || "0",
+          selectedTokenA.nativeTokenDecimals,
+          selectedTokenB.decimals,
+          nativeTokenExistentialDeposit || "0",
+          assetTokenInfoMinBalance || "0"
+        );
+        setMaxPercentage(nativeMinimumTokenAmountExceededCheck ? truncateDecimalNumber(max) : 100);
+      }
+    }
+  };
+
+  const calculatePercentage = (value: string, baseValue: string) => {
+    const valueMinusBaseValue = new Decimal(value).minus(baseValue);
+    return valueMinusBaseValue.dividedBy(value).mul(100);
+  };
+  
+  const calculateMaxPercent = (
+    selectedTokenNativeValue: string,
+    selectedTokenAssetValue: string,
+    selectedTokenA: string,
+    selectedTokenB: string,
+    nativeTokenExistentialDeposit: string,
+    assetTokenInfoMinBalance: string
+  ) => {
+    const selectedTokenAPow = formatInputTokenValue(selectedTokenNativeValue, selectedTokenA);
+    const selectedTokenBPow = formatInputTokenValue(selectedTokenAssetValue, selectedTokenB);
+
+    const percentA = calculatePercentage(selectedTokenAPow, nativeTokenExistentialDeposit);
+    const percentB = calculatePercentage(selectedTokenBPow, assetTokenInfoMinBalance);
+
+    return percentA.lt(percentB) ? percentA.toFixed() : percentB.toFixed();
   };
 
   const handleAddPoolLiquidityGasFee = async () => {
@@ -427,6 +570,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   };
 
   const getButtonProperties = useMemo(() => {
+    console.log(lpTokenId !== null && selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && !tooManyDecimalsError.isError)
     if (tokenBalances?.assets) {
       if (selectedTokenA.nativeTokenSymbol === "" || selectedTokenB.assetTokenId === "") {
         return { label: "Select token", disabled: true };
@@ -466,12 +610,20 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
         };
       }
 
-      if (selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && !tooManyDecimalsError.isError) {
+      if (lpTokenId === null && selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && !tooManyDecimalsError.isError) {
         return { label: "Deposit", disabled: false };
       }
 
-      if (selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && tooManyDecimalsError.isError) {
+      if (lpTokenId === null && selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && tooManyDecimalsError.isError) {
         return { label: "Deposit", disabled: true };
+      }
+
+      if (lpTokenId !== null && selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && !tooManyDecimalsError.isError) {
+        return { label: "Withdraw", disabled: false };
+      }
+
+      if (lpTokenId !== null && selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && tooManyDecimalsError.isError) {
+        return { label: "Withdraw", disabled: true };
       }
     } else {
       return { label: "Connect wallet", disabled: true };
@@ -695,7 +847,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
             </div>
           </div>
 
-          {poolExists ? (
+          {poolExists && !lpTokenId ? (
             <div className="flex rounded-lg bg-lime-500 px-4 py-2 text-medium font-normal text-cyan-700">
               {"No need to create a new pool. Liquidity can be added to the existing one."}
             </div>
@@ -772,8 +924,8 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
 
       <ReviewTransactionModal
         open={reviewModalOpen}
-        title="Review adding liquidity"
-        transactionType={TransactionTypes.add}
+        title={lpTokenId ? "Review removing liquidity" : "Review adding liquidity"}
+        transactionType={lpTokenId ? TransactionTypes.withdraw : TransactionTypes.add}
         priceImpact={priceImpact}
         inputValueA={selectedTokenNativeValue ? selectedTokenNativeValue?.tokenValue : ""}
         inputValueB={selectedTokenAssetValue ? selectedTokenAssetValue?.tokenValue : ""}
