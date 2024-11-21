@@ -14,6 +14,7 @@ import Tooltip from "../tooltip";
 import { TokenSelection } from "@/app/types/enum";
 import { TokenProps } from "@/app/types";
 import Image from "next/image";
+import { formatDecimalsFromToken } from "@/app/utils/helper";
 
 interface SelectTokenPayload {
   id: string;
@@ -201,7 +202,12 @@ const SelectTokenModal: FC<SwapSelectTokenModalProps> = ({
                     </div>
                     <div className="flex flex-col">
                       <p className="text-right text-[#b4d2ffaf] dark:text-[#120038] text-lg font-bold">
-                        {token.tokenAsset.balance}
+                      {token.tokenId
+                        ? formatDecimalsFromToken(
+                          Number(token.tokenAsset.balance ? token.tokenAsset.balance.replace(/[, ]/g, "") : "0"),
+                          token.assetTokenMetadata.decimals
+                        )
+                        : token.tokenAsset.balance}
                       </p>
                       <div className="flex flex-row justify-center items-center gap-2">
                         <p className=" text-[#b4d2ffaf] dark:text-[#120038] text-sm">

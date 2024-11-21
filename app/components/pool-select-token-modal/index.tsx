@@ -41,6 +41,8 @@ const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, sele
     onClose();
   };
 
+  console.log("tokenBalances", tokenBalances?.assets)
+
 
   return (
     <Modal isOpen={open} onClose={onClose} title={title}>
