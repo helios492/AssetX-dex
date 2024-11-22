@@ -13,7 +13,7 @@ import { setTokenBalanceUpdate } from "@/app/services/polkadotWalletServices";
 import { checkCreatePoolGasFee, createPool, getAllLiquidityPoolsTokensMetadata } from "@/app/services/poolServices";
 import { useAppContext } from "@/app/state/hook";
 import { PoolCardProps, PoolsTokenMetadata, TokenDecimalsErrorProps } from "@/app/types";
-import { ActionType, TransactionTypes } from "@/app/types/enum";
+import { ActionType, InputEditedType, TransactionTypes } from "@/app/types/enum";
 import { calculateSlippageReduce, checkIfPoolAlreadyExists, convertToBaseUnit, formatDecimalsFromToken, formatInputTokenValue } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
 import Decimal from "decimal.js";
@@ -24,6 +24,7 @@ import { FC, useEffect, useMemo, useState } from "react";
 import AddPoolLiquidity from "../add-pool-liquidity";
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { getAssetTokenFromNativeToken, getNativeTokenFromAssetToken } from "@/app/services/tokenServices";
+import axios from "axios";
 
 type AssetTokenProps = {
   tokenSymbol: string;
@@ -97,6 +98,10 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
   const [assetTokenMinValue, setAssetTokenMinValue] = useState<string>("");
   const [reviewModalOpen, setReviewModalOpen] = useState<boolean>(false);
   const [nativeTokenValue, setNativeTokenValue] = useState<string>("");
+  const [tokenAPrice, setTokenAPrice] = useState<string>("");
+  const [tokenBPrice, setTokenBPrice] = useState<string>("");
+  const [usdcPrice, setUsdcPrice] = useState<string>("");
+  const [nativeToken_Price, setNativeToken_Price] = useState<string>("");
   const [tooManyDecimalsError, setTooManyDecimalsError] = useState<TokenDecimalsErrorProps>({
     tokenSymbol: "",
     isError: false,
@@ -127,6 +132,87 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
       populateAssetToken();
     }
   }, [params?.id]);
+
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const response = await axios.get(`/api/crypto?symbol=usdc`);
+        setUsdcPrice(response.data.data.USDC.quote.USD.price);
+      } catch (err) {
+        console.error(err);
+        setTokenBPrice("");
+        setTokenAPrice("");
+      }
+    };
+
+    fetchQuotes();
+  }, [poolsTokenMetadata, tokenBalances]);
+
+  const getPriceOfUsdcFromNative = async (value: string) => {
+    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        nativeToken.assetTokenMetadata.decimals
+      );
+
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
+        api,
+        usdcToken[0].tokenId,
+        valueWithDecimals
+      );
+
+      if (assetTokenPrice) {
+        // setLowTradingMinimum(assetTokenPrice === "0");
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          "6"
+        );
+        setNativeToken_Price((Number(assetTokenNoDecimals) * Number(usdcPrice)).toString());
+      }
+    }
+  };
+
+  const getPriceOfNativeFromAsset = async (value: string, inputType: string) => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        inputType === InputEditedType.exactIn
+          ? selectedTokenB.decimals
+          : selectedTokenA.nativeTokenDecimals
+      );
+
+      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+        api,
+        inputType === InputEditedType.exactIn
+          ? selectedTokenB?.assetTokenId
+          : selectedTokenA.tokenId,
+        valueWithDecimals
+      );
+
+      if (nativeTokenPrice) {
+        // setLowTradingMinimum(nativeTokenPrice === "0");
+        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+        const nativeTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(nativeTokenNoSemicolons),
+          nativeToken.assetTokenMetadata.decimals
+        );
+        if (inputType === InputEditedType.exactIn) {
+          setTokenBPrice(nativeTokenNoDecimals.toString());
+        } else if (inputType === InputEditedType.exactOut) {
+          setTokenAPrice(nativeTokenNoDecimals.toString());
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    getPriceOfUsdcFromNative("1");
+      setTokenAPrice(nativeToken_Price);
+      if (tokenAPrice)
+        getPriceOfNativeFromAsset(tokenAPrice, InputEditedType.exactIn);
+  }, [selectedTokenA, selectedTokenB, tokenAPrice, tokenBPrice, nativeToken_Price]);
 
   useEffect(() => {
     if (tokenBalances) {
@@ -262,6 +348,8 @@ const CreatePool: FC<CreatePoolProps> = ({ tokenBSelected }) => {
           assetTokenWithSlippage.tokenValue,
           selectedTokenA.nativeTokenDecimals,
           selectedTokenB.decimals,
+          tokenAPrice,
+          tokenBPrice,
           dispatch
         );
       } catch (error) {

@@ -11,9 +11,25 @@ import { formatDecimalsFromToken } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
 import { PoolAction } from "@/app/store/pools/interface";
 import { WalletAction } from "@/app/store/wallet/interface";
+import axios from "axios";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
-const { parents, nativeTokenSymbol } = useGetNetwork();
+
+type sendInfoProps = {
+  tokenAValue: string
+  tokenBValue: string
+  tokenADecimals: string
+  tokenBDecimals: string
+  account: WalletAccount
+  response: ISubmittableResult
+  tokenAId?: string
+  tokenBId?: string
+  tokenAPrice: string
+  tokenBPrice: string
+  type: string
+};
+const { parents, nativeTokenSymbol, rpcUrl } = useGetNetwork();
 
 const exactAddedLiquidityInPool = (
   itemEvents: any,
@@ -37,6 +53,34 @@ const exactAddedLiquidityInPool = (
 
   return liquidityAddedEvent;
 };
+
+const sendInfoToDataBase = async ({ tokenAValue, tokenBValue, tokenADecimals, tokenBDecimals, account, response, tokenAId, tokenBId, tokenAPrice, tokenBPrice, type }: sendInfoProps) => {
+  const amountIn = formatDecimalsFromToken(
+    parseFloat(tokenAValue.replace(/[, ]/g, "")),
+    tokenADecimals
+  );
+  const amountOut = formatDecimalsFromToken(
+    parseFloat(tokenBValue.replace(/[, ]/g, "")),
+    tokenBDecimals
+  );
+
+  console.log("tokenPrice", tokenAPrice, tokenBPrice)
+
+  const res = await axios.post("/api/tx", {
+    walletAddress: account.address,
+    tx: response.status.asInBlock.toString(),
+    type: type,
+    tokenAAmount: amountIn,
+    tokenAId: tokenAId || "0",
+    tokenBAmount: amountOut,
+    tokenBId: tokenBId || "0",
+    tokenAPrice,
+    tokenBPrice,
+    rpcUrl: rpcUrl,
+  });
+
+  console.log("res", res);
+}
 
 const exactWithdrawnLiquidityFromPool = (
   itemEvents: any,
@@ -113,6 +157,8 @@ export const createPool = async (
   minAssetTokenValue: string,
   nativeTokenDecimals: string,
   assetTokenDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
   dispatch: Dispatch<PoolAction | WalletAction>
 ) => {
   const firstArg = api
@@ -152,6 +198,8 @@ export const createPool = async (
           minAssetTokenValue,
           nativeTokenDecimals,
           assetTokenDecimals,
+          tokenAPrice,
+          tokenBPrice,
           dispatch
         );
       }
@@ -199,6 +247,8 @@ export const addLiquidity = async (
   minAssetTokenValue: string,
   nativeTokenDecimals: string,
   assetTokenDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
   dispatch: Dispatch<PoolAction | WalletAction>
 ) => {
   const firstArg = api
@@ -248,6 +298,19 @@ export const addLiquidity = async (
             maxWidth: "750px",
           },
         });
+
+        sendInfoToDataBase({ 
+          tokenAValue: nativeTokenValue, 
+          tokenBValue: assetTokenValue, 
+          tokenADecimals: nativeTokenDecimals,
+          tokenBDecimals: assetTokenDecimals, 
+          account, 
+          response, 
+          tokenBId: assetTokenId,
+          tokenAPrice,
+          tokenBPrice,
+          type: "add liquidity" });
+          
       } else {
         if (response.status.type === ServiceResponseStatus.Finalized && response.dispatchError) {
           if (response.dispatchError.isModule) {
@@ -301,6 +364,8 @@ export const removeLiquidity = async (
   minAssetTokenValue: string,
   nativeTokenDecimals: string,
   assetTokenDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
   dispatch: Dispatch<PoolAction | WalletAction>
 ) => {
   const firstArg = api
@@ -342,6 +407,17 @@ export const removeLiquidity = async (
             maxWidth: "750px",
           },
         });
+        sendInfoToDataBase({ 
+          tokenAValue: minNativeTokenValue, 
+          tokenBValue: minAssetTokenValue, 
+          tokenADecimals: nativeTokenDecimals,
+          tokenBDecimals: assetTokenDecimals, 
+          account, 
+          response, 
+          tokenBId: assetTokenId,
+          tokenAPrice,
+          tokenBPrice,
+          type: "remove liquidity" });
       } else {
         if (response.status.type === ServiceResponseStatus.Finalized && response.dispatchError) {
           if (response.dispatchError.isModule) {

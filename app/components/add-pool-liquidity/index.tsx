@@ -25,6 +25,7 @@ import Decimal from "decimal.js";
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { slippageValueAtom } from "@/app/utils/store";
 import { useAtom } from "jotai";
+import axios from "axios";
 
 type AssetTokenProps = {
   tokenSymbol: string;
@@ -74,6 +75,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     assetLoading,
     isTokenCanNotCreateWarningPools,
     poolsCards,
+    poolsTokenMetadata
   } = state;
 
   const [selectedTokenA, setSelectedTokenA] = useState<NativeTokenProps>({
@@ -114,6 +116,10 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   const [pool, setPool] = useState<PoolCardProps>();
   const [nativeTokens, setNativeTokens] = useState<string>("");
   const [assetTokens, setAssetTokens] = useState<string>("");
+  const [tokenAPrice, setTokenAPrice] = useState<string>("");
+  const [tokenBPrice, setTokenBPrice] = useState<string>("");
+  const [usdcPrice, setUsdcPrice] = useState<string>("");
+  const [nativeToken_Price, setNativeToken_Price] = useState<string>("");
   const [native_Token, setNative_Token] = useState<PoolsTokenMetadata[]>([{
     tokenId: "",
     assetTokenMetadata: {
@@ -127,6 +133,21 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   }])
 
   const nativeToken = native_Token[0];
+
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const response = await axios.get(`/api/crypto?symbol=usdc`);
+        setUsdcPrice(response.data.data.USDC.quote.USD.price);
+      } catch (err) {
+        console.error(err);
+        setTokenBPrice("");
+        setTokenAPrice("");
+      }
+    };
+
+    fetchQuotes();
+  }, [poolsTokenMetadata, tokenBalances]);
   
   useEffect(() => {
     if(lpTokenId !== null){
@@ -177,7 +198,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
       };
       getNativeTokenInfo()
     }
-  }, [tokenBalances])
+  }, [tokenBalances]);
 
   const selectedNativeTokenNumber = new Decimal(selectedTokenNativeValue?.tokenValue || 0);
   const selectedAssetTokenNumber = new Decimal(selectedTokenAssetValue?.tokenValue || 0);
@@ -258,6 +279,72 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     }
   };
 
+  const getPriceOfUsdcFromNative = async (value: string) => {
+    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        nativeToken.assetTokenMetadata.decimals
+      );
+
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
+        api,
+        usdcToken[0].tokenId,
+        valueWithDecimals
+      );
+
+      if (assetTokenPrice) {
+        // setLowTradingMinimum(assetTokenPrice === "0");
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          "6"
+        );
+        setNativeToken_Price((Number(assetTokenNoDecimals) * Number(usdcPrice)).toString());
+      }
+    }
+  };
+
+  const getPriceOfNativeFromAsset = async (value: string, inputType: string) => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        inputType === InputEditedType.exactIn
+          ? selectedTokenB.decimals
+          : selectedTokenA.nativeTokenDecimals
+      );
+
+      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+        api,
+        inputType === InputEditedType.exactIn
+          ? selectedTokenB?.assetTokenId
+          : selectedTokenA.tokenId,
+        valueWithDecimals
+      );
+
+      if (nativeTokenPrice) {
+        // setLowTradingMinimum(nativeTokenPrice === "0");
+        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+        const nativeTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(nativeTokenNoSemicolons),
+          nativeToken.assetTokenMetadata.decimals
+        );
+        if (inputType === InputEditedType.exactIn) {
+          setTokenBPrice(nativeTokenNoDecimals.toString());
+        } else if (inputType === InputEditedType.exactOut) {
+          setTokenAPrice(nativeTokenNoDecimals.toString());
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    getPriceOfUsdcFromNative("1");
+      setTokenAPrice(nativeToken_Price);
+      if (tokenAPrice)
+        getPriceOfNativeFromAsset(tokenAPrice, InputEditedType.exactIn);
+  }, [selectedTokenA, selectedTokenB, tokenAPrice, tokenBPrice, nativeToken_Price]);
+
   const handlePool = async () => {
     setReviewModalOpen(false);
     const lpToken = Math.floor(Number(lpTokensAmountToBurn) * (withdrawAmountPercentage / 100)).toString();
@@ -266,7 +353,10 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     }
     setIsTransactionTimeout(false);
 
-    if(lpToken) {
+    if(lpToken !== null)  {
+
+      console.log("lpToken", lpToken);
+      
       try {
         if (api) {
           await removeLiquidity(
@@ -278,6 +368,8 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
             assetTokenWithSlippage.tokenValue.toString(),
             selectedTokenA.nativeTokenDecimals,
             selectedTokenB.decimals,
+            tokenAPrice,
+            tokenBPrice,
             dispatch
           );
         }
@@ -306,6 +398,8 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
           assetTokenWithSlippage.tokenValue.toString(),
           selectedTokenA.nativeTokenDecimals,
           selectedTokenB.decimals,
+          tokenAPrice,
+          tokenBPrice,
           dispatch
         );
       } catch (error) {

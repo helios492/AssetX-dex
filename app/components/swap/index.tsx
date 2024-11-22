@@ -114,6 +114,7 @@ export default function Swap() {
   const [tokenAPrice, setTokenAPrice] = useState<string>("");
   const [tokenBPrice, setTokenBPrice] = useState<string>("");
   const [usdcPrice, setUsdcPrice] = useState<string>("");
+  const [swapFee, setSwapFee] = useState<string>("");
   const [nativeToken_Price, setNativeToken_Price] = useState<string>("");
   const [native_Token, setNative_Token] = useState<PoolsTokenMetadata[]>([{
     tokenId: "",
@@ -128,6 +129,10 @@ export default function Swap() {
   }])
 
   const nativeToken = native_Token[0];
+
+  useEffect(()=>{
+    setSwapFee((Number(parseFloat(swapGasFee).toFixed(4)) * Number(nativeToken_Price) / 1000000).toString())
+  },[swapGasFee])
 
   const tokenASymbol = searchParams.get('tokenA');
   const tokenBSymbol = searchParams.get('tokenB');
@@ -740,11 +745,10 @@ export default function Swap() {
       const tokens = tokenBalances ? tokenBalances?.assets?.filter((item: any) => poolsAssetTokenIds.includes(item.tokenId)) : poolLiquidTokens;
       
 
-      // const assetTokens = [nativeToken]
-      //   .concat(tokens)
-      //   ?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
+      const assetTokens = [nativeToken]
+        .concat(tokens)
+        ?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
 
-        const assetTokens = tokens?.filter((item: any) => item.tokenId !== selectedTokens.tokenB?.tokenId);
       const poolTokenPairsArray: any[] = [];
 
       await Promise.all(
@@ -858,6 +862,9 @@ export default function Swap() {
               tokenB,
               selectedTokens.tokenA.decimals,
               selectedTokens.tokenB.decimals,
+              tokenAPrice,
+              tokenBPrice,
+              swapFee,
               false,
               dispatch
             );
@@ -871,6 +878,9 @@ export default function Swap() {
                 tokenB,
                 selectedTokens.tokenA.decimals,
                 selectedTokens.tokenB.decimals,
+                tokenAPrice,
+                tokenBPrice,
+                swapFee,
                 false,
                 dispatch
               );
@@ -888,6 +898,9 @@ export default function Swap() {
               tokenA,
               selectedTokens.tokenA.decimals,
               selectedTokens.tokenB.decimals,
+              tokenAPrice,
+              tokenBPrice,
+              swapFee,
               true,
               dispatch
             );
@@ -900,6 +913,9 @@ export default function Swap() {
               tokenA,
               selectedTokens.tokenA.decimals,
               selectedTokens.tokenB.decimals,
+              tokenAPrice,
+              tokenBPrice,
+              swapFee,
               true,
               dispatch
             );
@@ -920,6 +936,9 @@ export default function Swap() {
               tokenB,
               selectedTokens.tokenA.decimals,
               selectedTokens.tokenB.decimals,
+              tokenAPrice,
+              tokenBPrice,
+              swapFee,
               dispatch
             );
           } else if (inputEdited.inputType === InputEditedType.exactOut) {
@@ -932,6 +951,9 @@ export default function Swap() {
               tokenB,
               selectedTokens.tokenA.decimals,
               selectedTokens.tokenB.decimals,
+              tokenAPrice,
+              tokenBPrice,
+              swapFee,
               dispatch
             );
           }
@@ -991,6 +1013,7 @@ export default function Swap() {
   // };
 
   const onSwapSelectModal = (tokenData: any) => {
+    console.log("tokenData", tokenData)
     setSelectedTokens((prev) => {
       return {
         ...prev,
