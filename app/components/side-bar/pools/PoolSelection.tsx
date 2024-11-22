@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import PoolInformation from "./PoolInformation";
 import { themeDarkAtom } from "@/app/utils/store";
-import numberToString from "@/app/utils/numberToString";
 import { LpTokenAsset, Token } from "@/app/types";
-import { urlTo } from "@/app/utils/helper";
+import { formatDecimalsFromToken, formatInputTokenValue, urlTo } from "@/app/utils/helper";
 import { useAppContext } from "@/app/state/hook";
-import { LiquidityPageType } from "@/app/types/enum";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import TokenIcon from "../../token-icon";
+import { getAssetTokenFromNativeToken, getNativeTokenFromAssetToken } from "@/app/services/tokenServices";
+import axios from "axios";
 interface PoolSelectionProps {
   tokenPair: string;
   nativeTokens: string;
@@ -32,24 +31,16 @@ const PoolSelection = ({
   assetTokenId,
   lpTokenId,
 }: PoolSelectionProps) => {
+
   const [isClicked, setIsClicked] = useState(false);
   const [themeDark] = useAtom(themeDarkAtom);
-
-  const router = useRouter();
   const { state } = useAppContext();
-  const { tokenBalances, selectedAccount } = state;
-
-  const onDepositClick = () => {
-    // router.push(urlTo(ADD_LIQUIDITY_TO_EXISTING, { id: assetTokenId }), {
-    //   state: { pageType: LiquidityPageType.addLiquidity },
-    // });
-  };
-
-  const onWithdrawClick = () => {
-    // navigate(urlTo(REMOVE_LIQUIDITY_FROM_EXISTING, { id: assetTokenId }), {
-    //   state: { pageType: LiquidityPageType.removeLiquidity, lpTokenId: lpTokenId },
-    // });
-  };
+  const { tokenBalances, poolsTokenMetadata, api } = state;
+  const [usdcPrice, setUsdcPrice] = useState<string>("");
+  const [nativeTokenPrice, setNativeTokenPrice] = useState<string>("");
+  const [assetTokenPrice, setAssetTokenPrice] = useState<string>("");
+  const [nativeLiquidity, setNativeLiquidity] = useState<string>("");
+  const [assetLiquidity, setAssetLiquidity] = useState<string>("");
 
   // let volume: string,
   //   fees: string,
@@ -69,17 +60,84 @@ const PoolSelection = ({
   //   apr = numberToString(apr30d);
   // }
 
-  const checkIfDepositDisabled = () => {
-    return !tokenBalances?.assets?.find((token: any) => token.tokenId === assetTokenId);
-  };
 
-  const checkIfWithdrawDisabled = () => {
-    if (lpTokenAsset) {
-      if (parseInt(lpTokenAsset?.balance) > 0 && tokenBalances?.balance) {
-        return false;
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const response = await axios.get(`/api/crypto?symbol=usdc`);
+        setUsdcPrice(response.data.data.USDC.quote.USD.price);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchQuotes();
+  }, [poolsTokenMetadata, tokenBalances]);
+
+  useEffect(() => {
+    if(nativeToken && assetToken && usdcPrice){
+      getLiquidity();
+    }
+
+  }, [nativeToken, assetToken, usdcPrice, nativeTokenPrice, assetTokenPrice]);
+
+  const getLiquidity = async () => {
+    const nativeTokenPrice = await getPriceOfAssetFromNative("1");
+    setNativeTokenPrice(nativeTokenPrice || "");
+    const assetTokenPrice = await getPriceOfNativeFromAsset(nativeTokenPrice || "0", assetToken);
+    setAssetTokenPrice(assetTokenPrice || "");
+    const nativeLiquidity = ((Number(nativeTokenPrice || 0) * Number(nativeTokens))).toString();
+    const assetLiquidity = ((Number(assetTokenPrice || 0) * Number(assetTokens))).toString();
+    setNativeLiquidity(parseFloat(nativeLiquidity).toFixed(3));
+    setAssetLiquidity(parseFloat(assetLiquidity).toFixed(3));
+  }
+
+  const getPriceOfAssetFromNative = async (value: string) => {
+    const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        nativeToken.decimals
+      );
+
+      const assetTokenPrice = await getAssetTokenFromNativeToken(
+        api,
+        usdcToken[0].tokenId,
+        valueWithDecimals
+      );
+
+      if (assetTokenPrice) {
+        const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
+        const assetTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(assetTokenNoSemicolons),
+          "6"
+        );
+        return (Number(assetTokenNoDecimals) * Number(usdcPrice)).toString();
       }
     }
-    return true;
+  };
+
+  const getPriceOfNativeFromAsset = async (value: string, assetToken: Token) => {
+    if (api) {
+      const valueWithDecimals = formatInputTokenValue(
+        value,
+        assetToken.decimals
+      );
+
+      const nativeTokenPrice = await getNativeTokenFromAssetToken(
+        api,
+        assetTokenId,
+        valueWithDecimals
+      );
+
+      if (nativeTokenPrice) {
+        const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
+        const nativeTokenNoDecimals = formatDecimalsFromToken(
+          parseFloat(nativeTokenNoSemicolons),
+          nativeToken.decimals
+        );
+        return nativeTokenNoDecimals.toString();
+      }
+    }
   };
 
   return (
@@ -134,7 +192,7 @@ const PoolSelection = ({
           </p>
         </div>
         <div className="w-1/6">
-          <p>${"numberToString(liquidity)"}</p>
+          <p>{"$" + nativeLiquidity + " / " + "$" + assetLiquidity}</p>
         </div>
         <div className="w-1/6">
           <p>${"volume"}</p>
@@ -171,6 +229,9 @@ const PoolSelection = ({
           lpTokenId={lpTokenId}
           nativeTokens={nativeTokens}
           assetTokens={assetTokens}
+          nativeTokenPrice={nativeTokenPrice}
+          assetTokenPrice={assetTokenPrice}
+          usdcPrice={usdcPrice}
         />
         : null}
     </div>

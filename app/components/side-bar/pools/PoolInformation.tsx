@@ -22,6 +22,9 @@ interface PoolSelectionProps {
   lpTokenId: string | null;
   nativeTokens: string;
   assetTokens: string;
+  nativeTokenPrice: string;
+  assetTokenPrice: string;
+  usdcPrice: string;
 }
 
 type TokenValueProps = {
@@ -36,7 +39,10 @@ const PoolInformation: React.FC<PoolSelectionProps> = ({
   assetTokenId,
   lpTokenId,
   nativeTokens,
-  assetTokens
+  assetTokens,
+  nativeTokenPrice,
+  assetTokenPrice,
+  usdcPrice
 }) => {
   const router = useRouter();
   const [liquidity, setLiquidity] = useState<string>("0");
@@ -47,78 +53,12 @@ const PoolInformation: React.FC<PoolSelectionProps> = ({
   const [isClickedSwapButton, SetIsClickedSwapButton] = useState(false);
   const [slippageValue, setSlippageValue] = useAtom(slippageValueAtom);
   const { state, dispatch } = useAppContext();
-  const {poolsTokenMetadata, api, tokenBalances, selectedAccount} = state;
-  const [usdcPrice, setUsdcPrice] = useState<string>("");
-  const [lpTokensAmountToBurn, setLpTokensAmountToBurn] = useState<string>("");
+  const { api, selectedAccount} = state;
   const [selectedTokenNativeValue, setSelectedTokenNativeValue] = useState<TokenValueProps>();
   const [selectedTokenAssetValue, setSelectedTokenAssetValue] = useState<TokenValueProps>();
 
-useEffect(() => {
-  const fetchQuotes = async () => {
-    try {
-      const response = await axios.get(`/api/crypto?symbol=usdc`);
-      setUsdcPrice(response.data.data.USDC.quote.USD.price);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  fetchQuotes();
-}, [poolsTokenMetadata, tokenBalances]);
-
-const getPriceOfAssetFromNative = async (value: string) => {
-  const usdcToken = poolsTokenMetadata.filter((item: any) => item.assetTokenMetadata.name === "USD Coin");
-  if (api) {
-    const valueWithDecimals = formatInputTokenValue(
-      value,
-      nativeToken.decimals
-    );
-    
-    const assetTokenPrice = await getAssetTokenFromNativeToken(
-      api,
-      usdcToken[0].tokenId,
-      valueWithDecimals
-    );
-    
-    if (assetTokenPrice) {
-      // setLowTradingMinimum(assetTokenPrice === "0");
-      const assetTokenNoSemicolons = assetTokenPrice.toString()?.replace(/[, ]/g, "");
-      const assetTokenNoDecimals = formatDecimalsFromToken(
-        parseFloat(assetTokenNoSemicolons),
-        "6"
-      );
-      return (Number(assetTokenNoDecimals) * Number(usdcPrice)).toString();
-    }
-  }
-};
-
-const getPriceOfNativeFromAsset = async (value: string, assetToken: Token) => {
-  if (api) {
-    const valueWithDecimals = formatInputTokenValue(
-      value,
-      assetToken.decimals
-    );
-    
-    const nativeTokenPrice = await getNativeTokenFromAssetToken(
-      api,
-      assetTokenId,
-      valueWithDecimals
-    );
-    
-    if (nativeTokenPrice) {
-      // setLowTradingMinimum(nativeTokenPrice === "0");
-      const nativeTokenNoSemicolons = nativeTokenPrice.toString()?.replace(/[, ]/g, "");
-      const nativeTokenNoDecimals = formatDecimalsFromToken(
-        parseFloat(nativeTokenNoSemicolons),
-        nativeToken.decimals
-      );
-      return nativeTokenNoDecimals.toString();
-    }
-  }
-};
 
 const getLiquidity = async () => {
-  const nativeTokenPrice = await getPriceOfAssetFromNative("1");
-  const assetTokenPrice = await getPriceOfNativeFromAsset(nativeTokenPrice || "0", assetToken);
   console.log("usdcPrice", nativeTokenPrice, assetTokenPrice, selectedTokenNativeValue?.tokenValue, selectedTokenAssetValue?.tokenValue);  
     const liquidity = ((Number(nativeTokenPrice || 0) * Number(selectedTokenNativeValue?.tokenValue)) + (Number(assetTokenPrice || 0) * Number(selectedTokenAssetValue?.tokenValue))).toString();
     setLiquidity(parseFloat(liquidity).toFixed(2));
@@ -138,8 +78,6 @@ const getLiquidity = async () => {
 
       const lpTokenUserAsset = lpTokenUserAccount.toHuman() as LpTokenAsset;
       const lpTokenUserAssetBalance = parseInt(lpTokenUserAsset?.balance?.replace(/[, ]/g, ""));
-
-      setLpTokensAmountToBurn(lpTokenUserAssetBalance.toFixed(0));
 
       
       if (res && slippageValue) {
