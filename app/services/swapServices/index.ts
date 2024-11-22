@@ -8,9 +8,24 @@ import { formatDecimalsFromToken } from "@/app/utils/helper";
 import dotAcpToast from "@/app/utils/toast";
 import { SwapAction } from "@/app/store/swap/interface";
 import { WalletAction } from "@/app/store/wallet/interface";
+import axios from "axios";
+import { ISubmittableResult } from "@polkadot/types/types";
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
-const { parents } = useGetNetwork();
+type sendInfoProps = {
+  tokenAValue: string
+  tokenBValue: string
+  tokenADecimals: string
+  tokenBDecimals: string
+  account: WalletAccount
+  response: ISubmittableResult
+  tokenAId?: string
+  tokenBId?: string
+  tokenAPrice: string
+  tokenBPrice: string
+  swapFee: string
+};
+const { parents, rpcUrl } = useGetNetwork();
 
 const checkIfExactError = (errorValue: string) => {
   return errorValue === "Calculated amount out is less than provided minimum amount.";
@@ -39,6 +54,35 @@ const exactSwapAmounts = (
   return swapExecutedEvent;
 };
 
+const sendInfoToDataBase = async ({ tokenAValue, tokenBValue, tokenADecimals, tokenBDecimals, account, response, tokenAId, tokenBId, tokenAPrice, tokenBPrice, swapFee }: sendInfoProps) => {
+  const amountIn = formatDecimalsFromToken(
+    parseFloat(tokenAValue.replace(/[, ]/g, "")),
+    tokenADecimals
+  );
+  const amountOut = formatDecimalsFromToken(
+    parseFloat(tokenBValue.replace(/[, ]/g, "")),
+    tokenBDecimals
+  );
+
+  console.log("tokenPrice", tokenAPrice, tokenBPrice)
+
+  const res = await axios.post("/api/tx", {
+    walletAddress: account.address,
+    tx: response.status.asInBlock.toString(),
+    type: "swap",
+    tokenAAmount: amountIn,
+    tokenAId: tokenAId || "0",
+    tokenBAmount: amountOut,
+    tokenBId: tokenBId || "0",
+    tokenAPrice,
+    tokenBPrice,
+    rpcUrl: rpcUrl,
+    swapFee
+  });
+
+  console.log("res", res);
+}
+
 export const swapNativeForAssetExactIn = async (
   api: ApiPromise,
   assetTokenId: string,
@@ -47,6 +91,9 @@ export const swapNativeForAssetExactIn = async (
   assetTokenValue: string,
   tokenADecimals: string,
   tokenBDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
+  swapFee: string,
   reverse: boolean,
   dispatch: Dispatch<SwapAction | WalletAction>
 ) => {
@@ -88,6 +135,18 @@ export const swapNativeForAssetExactIn = async (
             maxWidth: "750px",
           },
         });
+
+        sendInfoToDataBase({ 
+          tokenAValue: nativeTokenValue, 
+          tokenBValue: assetTokenValue, 
+          tokenADecimals, tokenBDecimals, 
+          account, 
+          response, 
+          tokenBId: assetTokenId,
+          tokenAPrice,
+          tokenBPrice,
+          swapFee, });
+          
       } else {
         if (response.status.type === ServiceResponseStatus.Finalized && response.dispatchError) {
           if (response.dispatchError.isModule) {
@@ -147,6 +206,9 @@ export const swapNativeForAssetExactOut = async (
   assetTokenValue: string,
   tokenADecimals: string,
   tokenBDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
+  swapFee: string,
   reverse: boolean,
   dispatch: Dispatch<SwapAction | WalletAction>
 ) => {
@@ -188,6 +250,17 @@ export const swapNativeForAssetExactOut = async (
             maxWidth: "750px",
           },
         });
+
+        sendInfoToDataBase({ 
+          tokenAValue: nativeTokenValue, 
+          tokenBValue: assetTokenValue, 
+          tokenADecimals, tokenBDecimals, 
+          account, 
+          response, 
+          tokenAId: assetTokenId,
+          tokenAPrice,
+          tokenBPrice,
+          swapFee});
       } else {
         if (response.status.type === ServiceResponseStatus.Finalized && response.dispatchError) {
           if (response.dispatchError.isModule) {
@@ -247,6 +320,9 @@ export const swapAssetForAssetExactIn = async (
   assetTokenBValue: string,
   tokenADecimals: string,
   tokenBDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
+  swapFee: string,
   dispatch: Dispatch<SwapAction | WalletAction>
 ) => {
   const firstArg = api
@@ -296,6 +372,18 @@ export const swapAssetForAssetExactIn = async (
             maxWidth: "750px",
           },
         });
+
+        sendInfoToDataBase({
+          tokenAValue: assetTokenAValue, 
+          tokenBValue: assetTokenBValue, 
+          tokenADecimals, tokenBDecimals, account, 
+          response, 
+          tokenAId: assetTokenAId, 
+          tokenBId: assetTokenBId, 
+          tokenAPrice,
+          tokenBPrice,
+          swapFee});
+
       } else {
         if (response.status.type === ServiceResponseStatus.Finalized && response.dispatchError) {
           if (response.dispatchError.isModule) {
@@ -355,6 +443,9 @@ export const swapAssetForAssetExactOut = async (
   assetTokenBValue: string,
   tokenADecimals: string,
   tokenBDecimals: string,
+  tokenAPrice: string,
+  tokenBPrice: string,
+  swapFee: string,
   dispatch: Dispatch<SwapAction | WalletAction>
 ) => {
   const firstArg = api
@@ -404,6 +495,16 @@ export const swapAssetForAssetExactOut = async (
             maxWidth: "750px",
           },
         });
+        sendInfoToDataBase({
+          tokenAValue: assetTokenAValue, 
+          tokenBValue: assetTokenBValue, 
+          tokenADecimals, tokenBDecimals, account, 
+          response, 
+          tokenAId: assetTokenAId, 
+          tokenBId: assetTokenBId, 
+          tokenAPrice,
+          tokenBPrice,
+          swapFee});
       } else {
         if (response.status.type === ServiceResponseStatus.Finalized && response.dispatchError) {
           if (response.dispatchError.isModule) {
