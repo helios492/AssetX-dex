@@ -20,6 +20,7 @@ interface PoolSelectionProps {
   lpTokenAsset: LpTokenAsset | null;
   assetTokenId: string;
   lpTokenId: string | null;
+  sortPeriod: string
 }
 const PoolSelection = ({
   tokenPair,
@@ -30,6 +31,7 @@ const PoolSelection = ({
   assetToken,
   assetTokenId,
   lpTokenId,
+  sortPeriod
 }: PoolSelectionProps) => {
 
   const [isClicked, setIsClicked] = useState(false);
@@ -41,6 +43,8 @@ const PoolSelection = ({
   const [assetTokenPrice, setAssetTokenPrice] = useState<string>("");
   const [nativeLiquidity, setNativeLiquidity] = useState<string>("");
   const [assetLiquidity, setAssetLiquidity] = useState<string>("");
+  const [volume, setVolume] = useState<string>("0");
+  const [fees, setFees] = useState<string>("0");
 
   // let volume: string,
   //   fees: string,
@@ -79,6 +83,28 @@ const PoolSelection = ({
     }
 
   }, [nativeToken, assetToken, usdcPrice, nativeTokenPrice, assetTokenPrice]);
+
+  const getVolume = async () => {
+    const response = await axios.get(`/api/volume/?assetTokenId=${assetTokenId}`);
+    let volume = 0;
+    response.data.data?.map((item)=>{
+      volume+=item.tokenAAmount * item.tokenAPrice
+    });
+    setVolume(parseFloat(volume.toString()).toFixed(5));
+  };
+
+  const getFees = async () => {
+    const response = await axios.get(`/api/fee/?assetTokenId=${assetTokenId}`);
+    let fees = 0;
+    response.data.data?.map((item)=>{
+      fees+=item.swapFee || 0
+    })
+    setFees(parseFloat((fees*1000000).toString()).toFixed(5));
+  }
+  useEffect(()=>{
+    getVolume();
+    getFees();
+  },[sortPeriod, assetTokenId])
 
   const getLiquidity = async () => {
     const nativeTokenPrice = await getPriceOfAssetFromNative("1");
@@ -195,10 +221,10 @@ const PoolSelection = ({
           <p>{"$" + nativeLiquidity + " / " + "$" + assetLiquidity}</p>
         </div>
         <div className="w-1/6">
-          <p>${"volume"}</p>
+          <p>${volume}</p>
         </div>
         <div className="w-1/6">
-          <p>${"fees"}</p>
+          <p>{Number(fees)>0 ? "$" + fees + "e-6" : "$" + fees}</p>
         </div>
         <div className="w-1/6">
           <p>

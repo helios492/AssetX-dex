@@ -17,7 +17,7 @@ import {
 } from "@/app/utils/store";
 import { initialPoolInfoType } from "@/app/utils/type";
 import { useAppContext } from "@/app/state/hook";
-import { LottieLarge } from "@/app/components/loader";
+import { LottieLarge, LottieMedium } from "@/app/components/loader";
 import { PoolCardProps } from "@/app/types";
 
 export default function Pools() {
@@ -223,6 +223,7 @@ export default function Pools() {
                     nativeToken={item.totalTokensLocked.nativeToken}
                     assetTokenId={item.assetTokenId}
                     lpTokenId={item.lpTokenId}
+                    sortPeriod={sortPeriod}
                   />
                 </div>
               ))}
@@ -335,7 +336,7 @@ export default function Pools() {
                 <tbody>
                   {isPoolsLoading ? (
                     <tr className="mt-60 flex items-center justify-center">
-                      <LottieLarge />
+                      <LottieMedium />
                     </tr>
                   ) : pools.length > 0 && poolsCards.length > 0 ? (
                     <>
