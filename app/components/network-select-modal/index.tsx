@@ -37,7 +37,7 @@ const NetworkSelectModal = () => {
     <Modal isOpen={networkModal} onClose={() => setNetworkModal(false)} title="Select Network">
       <div className="grid grid-cols-1 gap-4">
         <div>
-          <p>Live Network</p>
+          <p>Live Networks</p>
           <div className="grid grid-cols-2 gap-5">
           {liveNetworks.map((item, idx) => (
               <button
@@ -64,7 +64,7 @@ const NetworkSelectModal = () => {
           </div>
         </div>
         <div>
-          <p>Test Network</p>
+          <p>Test Networks</p>
           <div className="grid grid-cols-2 gap-5">
           {testNetworks.map((item, idx) => (
             <button
