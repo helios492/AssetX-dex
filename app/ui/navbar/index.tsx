@@ -73,6 +73,11 @@ export default function NavBar() {
             className="h-16"
           />
         </Link>
+        <div className="text-gray-300 text-center">
+          <p> DEX Under Construction - Enjoy the Testnet</p>
+          <p>Get WND Tokens from Faucet here : <a href="https://faucet.polkadot.io/westend?parachain=1000" className="hover:text-blue-400">https://faucet.polkadot.io/westend?parachain=1000</a></p>
+        </div>
+
         <div className="flex flex-row justify-end items-center gap-4">
           <div
             className=" flex flex-row justify-start dark:justify-end items-center w-12 bg-[#070068] dark:bg-[#310099] rounded-full p-0.5 cursor-pointer"
