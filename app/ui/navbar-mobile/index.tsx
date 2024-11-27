@@ -94,7 +94,7 @@ const NavBarMobile: FC = () => {
         className={`${isConnectWallet ? "hidden" : ""
           } sm:hidden  pl-[6%] pr-[3%] pt-[4%] fixed top-0 bg-gradient-to-b from-[#3F055A] via-[#3f055a] to-[#5F20E500] dark:text-white dark:bg-gradient-to-b dark:from-white dark:via-white dark:to-[#FFFFFF00] w-full z-40`}
       >
-        <div className="text-gray-300 text-[12px] text-center block">DEX Under Construction - Get WND Tokens from Faucet <a href="https://faucet.polkadot.io/westend?parachain=1000" className="text-blue-400 hover:cursor-pointer underline" target="_blank" rel="noopener noreferrer">here</a></div>
+        <div className="dark:text-gray-800 text-gray-200 text-[12px] text-center block">DEX Under Construction - Get WND Tokens from Faucet <a href="https://faucet.polkadot.io/westend?parachain=1000" className="text-blue-400 hover:cursor-pointer underline" target="_blank" rel="noopener noreferrer">here</a></div>
         <div className=" flex flex-row justify-between items-center">
           <Link
             href="/dashboard/swap"
