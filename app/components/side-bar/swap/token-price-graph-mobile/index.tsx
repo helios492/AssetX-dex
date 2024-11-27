@@ -28,14 +28,14 @@ const TokenPriceGraphMobile = ({
         <div className="flex flex-col justify-between w-1/3 gap-2">
           <div className="flex flex-row cursor-pointer justify-start items-center gap-4">
             <div className="flex flex-row justify-center items-center rounded-full p-0.5 relative cursor-pointer" onClick={() => setShowChartModal(true)}>
-              <div className="flex flex-row justify-center items-center w-4 h-4 rounded-full bg-gradient-to-r from-[#5100FE] to-[#32009C] p-0.5 ">
+              <div className="flex flex-row justify-center items-center w-6 h-6 rounded-full bg-gradient-to-r from-[#5100FE] to-[#32009C] p-0.5 ">
                 <Image src={`/logos/${tokenA}.png`} alt="Token Logo" width={16} height={16} onError={e => {
                   e.currentTarget.src = "/logos/DOT.png"
                   e.currentTarget.srcset = "/logos/DOT.png"
                 }} />
               </div>
 
-              <div className="flex flex-row justify-center items-center w-4 h-4 rounded-full bg-gradient-to-r from-[#5100FE] to-[#32009C] p-0.5 absolute left-[70%]">
+              <div className="flex flex-row justify-center items-center w-6 h-6 rounded-full bg-gradient-to-r from-[#5100FE] to-[#32009C] p-0.5 absolute left-[70%]">
                 <Image src={`/logos/${tokenB}.png`} alt="Token Logo" width={16} height={16} onError={e => {
                   e.currentTarget.src = "/logos/DOT.png"
                   e.currentTarget.srcset = "/logos/DOT.png"
