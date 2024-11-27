@@ -13,7 +13,7 @@ const liveNetworks = [
 
 const testNetworks = [
   { name: NetworkKeys.Westend, active:true },
-  { name: NetworkKeys.Rococo, active:false },
+  // { name: NetworkKeys.Rococo, active:false },
 ]
 
 const NetworkSelectModal = () => {
