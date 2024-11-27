@@ -1715,7 +1715,7 @@ export default function Swap() {
   ]);
 
   return (
-    <div className="flex flex-col justify-start min-w-[360px] h-screen sm:h-[calc(100vh-90px)] items-center mt-0 pt-[20%] pb-[20%] sm:pb-[5%] sm:pt-16 gap-4 sm:gap-10 text-[var(--text-maincolor)] dark:text-[#120038] overflow-auto">
+    <div className="flex flex-col justify-start min-w-[360px] h-screen sm:h-[calc(100vh-90px)] items-center mt-0 pt-[27%] pb-[20%] sm:pb-[5%] sm:pt-16 gap-4 sm:gap-10 text-[var(--text-maincolor)] dark:text-[#120038] overflow-auto">
       <div className="flex-row p-1 w-[280px] bg-[#220068] dark:bg-[#E9E9E9] rounded-full sm:flex hidden">
         <Link href="/dashboard/swap" className="w-1/2">
           <div className="w-full py-2.5 px-6 text-white text-center text-2xl font-bold bg-gradient-to-b from-[#5100FE] to-[#32009C] rounded-full shadow-down-black">
