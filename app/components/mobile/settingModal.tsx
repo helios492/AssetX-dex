@@ -13,7 +13,7 @@ const SettingModal = () => {
       if (viewModal) setViewModal(false);
     }
   };
-  const slippage_tolerance = ["0.1%", "0.3%", "0.5%"];
+  const slippage_tolerance = ["0.1", "0.3", "0.5"];
   const trasaction_priority = [
     {
       name: "Auto",
@@ -78,7 +78,7 @@ const SettingModal = () => {
                   onClick={() => setToleranceState(tolerance)}
                 >
                   <div className=" w-full h-full bg-[#0f002e] dark:bg-[#E9E9E9] rounded-xl px-4 py-1.5 cursor-pointer">
-                    <p className=" font-bold">{tolerance}</p>
+                    <p className=" font-bold">{tolerance}%</p>
                   </div>
                 </div>
               ))}
