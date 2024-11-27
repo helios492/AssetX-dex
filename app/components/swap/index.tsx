@@ -130,9 +130,9 @@ export default function Swap() {
 
   const nativeToken = native_Token[0];
 
-  useEffect(()=>{
+  useEffect(() => {
     setSwapFee((Number(parseFloat(swapGasFee).toFixed(4)) * Number(nativeToken_Price) / 1000000).toString())
-  },[swapGasFee])
+  }, [swapGasFee])
 
   const tokenASymbol = searchParams.get('tokenA');
   const tokenBSymbol = searchParams.get('tokenB');
@@ -726,12 +726,12 @@ export default function Swap() {
     if (api) {
 
       const poolLiquidTokens: any = nativeToken.assetTokenMetadata.symbol
-      ? [nativeToken, ...poolsTokenMetadata].filter(
-        (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
-      )
-      : poolsTokenMetadata?.filter(
-        (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
-      );
+        ? [nativeToken, ...poolsTokenMetadata].filter(
+          (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
+        )
+        : poolsTokenMetadata?.filter(
+          (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
+        );
 
       const poolsAssetTokenIds = pools?.map((pool: any) => {
         if (pool?.[0]?.[1].interior?.X2) {
@@ -740,10 +740,10 @@ export default function Swap() {
         }
       });
 
-      
-      
+
+
       const tokens = tokenBalances ? tokenBalances?.assets?.filter((item: any) => poolsAssetTokenIds.includes(item.tokenId)) : poolLiquidTokens;
-      
+
 
       const assetTokens = [nativeToken]
         .concat(tokens)
@@ -810,14 +810,15 @@ export default function Swap() {
       : poolsTokenMetadata?.filter(
         (item: any) => item.tokenId !== selectedTokens.tokenA?.tokenId
       );
-
-    // for (const item of poolLiquidTokens) {
-    //   for (const walletAsset of tokenBalances.assets) {
-    //     if (item.tokenId === walletAsset.tokenId) {
-    //       item.tokenAsset.balance = walletAsset.tokenAsset.balance;
-    //     }
-    //   }
-    // }
+    if (tokenBalances) {
+      for (const item of poolLiquidTokens) {
+        for (const walletAsset of tokenBalances.assets) {
+          if (item.tokenId === walletAsset.tokenId) {
+            item.tokenAsset.balance = walletAsset.tokenAsset.balance;
+          }
+        }
+      }
+    }
     setAvailablePoolTokenB(poolLiquidTokens);
     if (selectedTokens.tokenB.tokenId.length || selectedTokens.tokenB.tokenSymbol.length) {
       const tokenB = poolLiquidTokens.find(item => item.tokenId === selectedTokens.tokenB.tokenId && item.assetTokenMetadata.symbol === selectedTokens.tokenB.tokenSymbol)
