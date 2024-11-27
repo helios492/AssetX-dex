@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import classNames from "classnames";
 import { ActionType } from "@/app/types/enum";
 import Modal from "../modal";
@@ -6,7 +6,10 @@ import { useAppContext } from "@/app/state/hook";
 import { formatDecimalsFromToken } from "@/app/utils/helper";
 import Image from "next/image";
 import { useAtom } from "jotai";
-import { themeDarkAtom } from "@/app/utils/store";
+import { availablePoolTokenBAtom, themeDarkAtom } from "@/app/utils/store";
+import { PoolsTokenMetadata } from "@/app/types";
+import { ApiPromise, WsProvider } from '@polkadot/api';
+import useGetNetwork from "@/app/hooks/useGetNetwork";
 
 type TokenProps = {
   tokenSymbol: string;
@@ -25,9 +28,74 @@ interface PoolSelectTokenModalProps {
 
 const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, selected, onClose, onSelect }) => {
   const { state, dispatch } = useAppContext();
-  const { tokenBalances } = state;
+  const { tokenBalances, poolsTokenMetadata } = state;
   const [themeDark] = useAtom(themeDarkAtom);
   const [searchQuery, setSearchQuery] = useState("");
+  const {rpcUrl} = useGetNetwork();
+  const [availablePoolTokenB, setAvailablePoolTokenB] = useAtom(availablePoolTokenBAtom)
+  const [native_Token, setNative_Token] = useState<PoolsTokenMetadata[]>([{
+    tokenId: "",
+    assetTokenMetadata: {
+      symbol: tokenBalances?.tokenSymbol as string,
+      name: tokenBalances?.tokenSymbol as string,
+      decimals: tokenBalances?.tokenDecimals as string,
+    },
+    tokenAsset: {
+      balance: tokenBalances?.balance,
+    },
+  }])
+
+  const nativeToken = native_Token[0];
+
+  useEffect(() => {
+    if (tokenBalances) {
+      setNative_Token([{
+        tokenId: "",
+        assetTokenMetadata: {
+          symbol: tokenBalances?.tokenSymbol as string,
+          name: tokenBalances?.tokenSymbol as string,
+          decimals: tokenBalances?.tokenDecimals as string,
+        },
+        tokenAsset: {
+          balance: tokenBalances?.balance,
+        },
+      }]);
+    } else {
+      const getNativeTokenInfo = async () => {
+        // Connect to the blockchain
+        const provider = new WsProvider(rpcUrl); // Use the appropriate WebSocket endpoint
+        const api = await ApiPromise.create({ provider });
+
+        // Get native token information
+        const symbols = api.registry.chainTokens; // Symbol(s) of the native token
+        const decimals = api.registry.chainDecimals; // Decimals of the native token
+
+        setNative_Token([{
+          tokenId: "",
+          assetTokenMetadata: {
+            symbol: symbols[0],
+            name: symbols[0],
+            decimals: decimals[0],
+          },
+          tokenAsset: {
+            balance: 0,
+          },
+        }]);
+
+        // Example: Get existential deposit (minimum balance)
+        const existentialDeposit = api.consts.balances.existentialDeposit.toHuman();
+        console.log('Existential Deposit:', existentialDeposit);
+
+        await api.disconnect(); // Disconnect from the chain
+      };
+      getNativeTokenInfo()
+    }
+  }, [tokenBalances]);
+
+  const filteredTokenList = searchQuery.length > 0 ? availablePoolTokenB.filter((token: any) =>
+    token.assetTokenMetadata.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    token.assetTokenMetadata.symbol?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : availablePoolTokenB;
 
   const handlePoolAssetTokeData = (id: string, assetSymbol: string, decimals: string, assetTokenBalance: string) => {
     const assetTokenData = {
@@ -41,6 +109,31 @@ const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, sele
     onClose();
   };
 
+  const getLiquidityTokenB = () => {
+    const poolLiquidTokens: any = nativeToken.assetTokenMetadata.symbol
+    ? [nativeToken, ...poolsTokenMetadata].filter(
+      (item: any) => item.tokenId !== nativeToken.tokenId
+    )
+    : poolsTokenMetadata?.filter(
+      (item: any) => item.tokenId !== nativeToken.tokenId
+    );
+  if (tokenBalances) {
+    for (const item of poolLiquidTokens) {
+      for (const walletAsset of tokenBalances.assets) {
+        if (item.tokenId === walletAsset.tokenId) {
+          item.tokenAsset.balance = walletAsset.tokenAsset.balance;
+        }
+      }
+    }
+  }
+  setAvailablePoolTokenB(poolLiquidTokens)
+  };
+
+  useEffect(()=>{
+    if(tokenBalances){
+      getLiquidityTokenB();
+    }
+  },[nativeToken, poolsTokenMetadata, tokenBalances])
   console.log("tokenBalances", tokenBalances?.assets)
 
 
@@ -75,7 +168,7 @@ const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, sele
               }`}
           >
             {tokenBalances?.assets && tokenBalances?.assets.length > 0 ? (
-              tokenBalances?.assets?.map((item: any, idx) => (
+              filteredTokenList?.map((item: any, idx) => (
                 <button
                   key={idx}
                   className={classNames(
@@ -118,7 +211,7 @@ const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, sele
                     <p className="text-right text-[#b4d2ffaf] dark:text-[#120038] text-lg font-bold">
                       {item.tokenId
                         ? formatDecimalsFromToken(
-                          Number(item.tokenAsset.balance.replace(/[, ]/g, "")),
+                          Number(item.tokenAsset.balance ? item.tokenAsset.balance.replace(/[, ]/g, "") : "0"),
                           item.assetTokenMetadata.decimals
                         )
                         : item.tokenAsset.balance}
