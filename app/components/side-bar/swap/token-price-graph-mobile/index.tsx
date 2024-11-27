@@ -21,6 +21,7 @@ const TokenPriceGraphMobile = ({
   const [, setShowChartModal] = useAtom(isShowChartModalAtom);
 
   const [isThemeDark] = useAtom(themeDarkAtom);
+  console.log("tokens", tokenA, tokenB)
   return (
     <div className="flex flex-col p-7 gap-5">
       <div className="flex flex-row justify-start gap-7">
@@ -28,14 +29,20 @@ const TokenPriceGraphMobile = ({
           <div className="flex flex-row cursor-pointer justify-start items-center gap-4">
             <div className="flex flex-row justify-center items-center rounded-full p-0.5 relative cursor-pointer" onClick={() => setShowChartModal(true)}>
               <div className="flex flex-row justify-center items-center w-4 h-4 rounded-full bg-gradient-to-r from-[#5100FE] to-[#32009C] p-0.5 ">
-                <Image src={`/logos/${tokenA}.png`} alt="Token Logo" width={16} height={16} />
+                <Image src={`/logos/${tokenA}.png`} alt="Token Logo" width={16} height={16} onError={e => {
+                  e.currentTarget.src = "/logos/DOT.png"
+                  e.currentTarget.srcset = "/logos/DOT.png"
+                }} />
               </div>
 
               <div className="flex flex-row justify-center items-center w-4 h-4 rounded-full bg-gradient-to-r from-[#5100FE] to-[#32009C] p-0.5 absolute left-[70%]">
-                <Image src={`/logos/${tokenB}.png`} alt="Token Logo" width={16} height={16} />
+                <Image src={`/logos/${tokenB}.png`} alt="Token Logo" width={16} height={16} onError={e => {
+                  e.currentTarget.src = "/logos/DOT.png"
+                  e.currentTarget.srcset = "/logos/DOT.png"
+                }} />
               </div>
             </div>
-            <p className="text-sm font-bold whitespace-nowrap cursor-pointer" onClick={() => setShowChartModal(true)}>
+            <p className="text-lg text-white font-bold whitespace-nowrap cursor-pointer" onClick={() => setShowChartModal(true)}>
               {tokenA} / {tokenB}
             </p>
           </div>
@@ -48,9 +55,15 @@ const TokenPriceGraphMobile = ({
         </div>
         <div className="flex justify-center items-center w-full cursor-pointer" onClick={() => setShowChartModal(true)}>
           {isThemeDark ? (
-            <Image src={`/graph/${tokenB}-dark1.png`} alt="Token Price" width={100} height={100} />
+            <Image src={`/graph/${tokenB}-dark1.png`} alt="Token Price" width={100} height={100} onError={e => {
+              e.currentTarget.src = `/graph/DOT-dark.png`
+              e.currentTarget.srcset = `/graph/DOT-dark.png`
+            }} />
           ) : (
-            <Image src={`/graph/${tokenB}.png`} alt="Token Price" width={100} height={100} />
+            <Image src={`/graph/${tokenB}.png`} alt="Token Price" width={100} height={100} onError={e => {
+              e.currentTarget.src = `/graph/DOT.png`
+              e.currentTarget.srcset = `/graph/DOT.png`
+            }} />
           )}
         </div>
       </div>
