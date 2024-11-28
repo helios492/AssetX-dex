@@ -664,6 +664,63 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     }
   };
 
+  const tokenAValue = async (value?: string) => {
+    if (value) {
+      value = new Decimal(value).toFixed();
+
+      if (value.includes(".")) {
+        if (value.split(".")[1].length > parseInt(selectedTokenA.nativeTokenDecimals)) {
+          setTooManyDecimalsError({
+            tokenSymbol: selectedTokenA.nativeTokenSymbol,
+            isError: true,
+            decimalsAllowed: parseInt(selectedTokenA.nativeTokenDecimals),
+          });
+          return;
+        }
+      }
+
+      setTooManyDecimalsError({
+        tokenSymbol: "",
+        isError: false,
+        decimalsAllowed: 0,
+      });
+
+      setSelectedTokenAValue(value);
+    } else {
+      setSelectedTokenAValue("");
+      setSelectedTokenBValue("");
+    }
+  };
+
+  const tokenBValue = async (value?: string) => {
+    if (value) {
+      value = new Decimal(value).toFixed();
+
+      if (value.includes(".")) {
+        if (value.split(".")[1].length > parseInt(selectedTokenB.decimals)) {
+          setTooManyDecimalsError({
+            tokenSymbol: selectedTokenB.tokenSymbol,
+            isError: true,
+            decimalsAllowed: parseInt(selectedTokenB.decimals),
+          });
+          return;
+        }
+      }
+
+      setTooManyDecimalsError({
+        tokenSymbol: "",
+        isError: false,
+        decimalsAllowed: 0,
+      });
+
+      setSelectedTokenBValue(value);
+    } else {
+      setSelectedTokenAValue("");
+      setSelectedTokenBValue("");
+    }
+  };
+
+
   const getButtonProperties = useMemo(() => {
     console.log(lpTokenId !== null && selectedNativeTokenNumber.gt(0) && selectedAssetTokenNumber.gt(0) && !tooManyDecimalsError.isError)
     if (tokenBalances?.assets) {
@@ -870,7 +927,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
             tokenDecimals={selectedTokenA.nativeTokenDecimals}
             tokenValue={selectedTokenNativeValue?.tokenValue}
             onClick={() => null}
-            onSetTokenValue={(value) => setSelectedTokenAValue(value)}
+            onSetTokenValue={(value) => tokenAValue(value)}
             selectDisabled={true}
             disabled={addLiquidityLoading}
             assetLoading={assetLoading}
@@ -892,7 +949,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
             tokenDecimals={selectedTokenB.decimals}
             tokenValue={selectedTokenAssetValue?.tokenValue}
             onClick={() => setIsModalOpen(true)}
-            onSetTokenValue={(value) => setSelectedTokenBValue(value)}
+            onSetTokenValue={(value) => tokenBValue(value)}
             selectDisabled={!tokenBId?.id}
             disabled={addLiquidityLoading}
             assetLoading={assetLoading}
