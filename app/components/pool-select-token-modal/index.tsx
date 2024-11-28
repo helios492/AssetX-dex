@@ -178,9 +178,9 @@ const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, sele
                   onClick={() =>
                     handlePoolAssetTokeData(
                       item.tokenId,
-                      item.assetTokenMetadata.symbol,
-                      item.assetTokenMetadata.decimals,
-                      item.tokenAsset.balance
+                      item.assetTokenMetadata.symbol || item.tokenSymbol,
+                      item.assetTokenMetadata.decimals || item.decimals,
+                      item.tokenAsset.balance || 0
                     )
                   }
                 >
