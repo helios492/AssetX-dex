@@ -49,7 +49,7 @@ type AddPoolLiquidityProps = {
 
 
 const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquidityProps) => {
-  
+
   const { state, dispatch } = useAppContext();
   const { assethubSubscanUrl, nativeTokenSymbol, rpcUrl } = useGetNetwork();
   const [nativeTokenValue, setNativeTokenValue] = useState<string>("");
@@ -58,7 +58,6 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
   const lpTokenId = searchParams.get("lp");
-  console.log("lpTokenId", lpTokenId)
   const params = tokenBId ? tokenBId : { id };
 
   const {
@@ -150,9 +149,9 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
 
     fetchQuotes();
   }, [poolsTokenMetadata, tokenBalances]);
-  
+
   useEffect(() => {
-    if(lpTokenId !== null){
+    if (lpTokenId !== null) {
       getNativeAndAssetTokensFromPool();
     }
   }, [slippageValue, selectedTokenB.assetTokenId, selectedTokenNativeValue?.tokenValue, withdrawAmountPercentage, lpTokenId]);
@@ -209,20 +208,20 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     router.push("/dashboard/pools");
   };
 
-  useEffect(()=>{
+  useEffect(() => {
     console.log("selectedTokens", selectedTokenA, selectedTokenB)
-  },[selectedTokenB])
+  }, [selectedTokenB])
 
-  useEffect(()=>{
+  useEffect(() => {
     getPool();
-    if(pool !== undefined){
+    if (pool !== undefined) {
       setNativeTokens(pool.totalTokensLocked.nativeToken.formattedValue)
       setAssetTokens(pool.totalTokensLocked.assetToken.formattedValue)
     }
-  },[pool, selectedTokenB])
+  }, [pool, selectedTokenB])
 
   const getPool = () => {
-    const pool = poolsCards.filter((item)=>item.assetTokenId === selectedTokenB.assetTokenId);
+    const pool = poolsCards.filter((item) => item.assetTokenId === selectedTokenB.assetTokenId);
     setPool(pool[0]);
   }
 
@@ -250,7 +249,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     });
   };
 
-    useEffect(() => {
+  useEffect(() => {
     if (selectedTokenB.assetTokenId) {
       getPriceOfAssetFromNative();
     }
@@ -342,9 +341,9 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
 
   useEffect(() => {
     getPriceOfUsdcFromNative("1");
-      setTokenAPrice(nativeToken_Price);
-      if (tokenAPrice)
-        getPriceOfNativeFromAsset(tokenAPrice, InputEditedType.exactIn);
+    setTokenAPrice(nativeToken_Price);
+    if (tokenAPrice)
+      getPriceOfNativeFromAsset(tokenAPrice, InputEditedType.exactIn);
   }, [selectedTokenA, selectedTokenB, tokenAPrice, tokenBPrice, nativeToken_Price]);
 
   const handlePool = async () => {
@@ -355,12 +354,9 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     }
     setIsTransactionTimeout(false);
 
-    if(lpToken !== null)  {
-
-      console.log("lpToken", lpToken);
-      
+    if (lpToken !== null) {
       try {
-        if (api) {
+        if (api && lpTokenId) {
           await removeLiquidity(
             api,
             selectedTokenB.assetTokenId,
@@ -380,7 +376,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
       }
     }
 
-    if (api && selectedTokenNativeValue && selectedTokenAssetValue) {
+    if (api && selectedTokenNativeValue && selectedTokenAssetValue && !lpTokenId) {
       const nativeTokenValue = formatInputTokenValue(selectedNativeTokenNumber, selectedTokenA?.nativeTokenDecimals)
         .toLocaleString()
         ?.replace(/[, ]/g, "");
@@ -501,7 +497,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
     const valueMinusBaseValue = new Decimal(value).minus(baseValue);
     return valueMinusBaseValue.dividedBy(value).mul(100);
   };
-  
+
   const calculateMaxPercent = (
     selectedTokenNativeValue: string,
     selectedTokenAssetValue: string,
@@ -1276,10 +1272,15 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
           </p>
         </div>
         <div className="bg-gradient-to-r from-[#220068] via-[#1D0058] to-[#2B0281] dark:bg-gradient-to-r dark:from-[#E8E8E8] dark:to-[#E8E8E8] rounded-md sm:rounded-3xl px-3 sm:px-8 py-2.5 sm:py-6">
-          <p className="font-bold text-[#B4D2FF80] dark:text-[#120038] text-left text-sm">
-            If you staked your LP tokens in a farm, unstake them to see them
-            here
-          </p>
+          {!lpTokenId ?
+            <p className="font-bold text-[#B4D2FF80] dark:text-[#120038] text-left text-sm">
+              If you staked your LP tokens in a farm, unstake them to see them
+              here
+            </p> :
+            <p className="font-bold text-[#B4D2FF80] dark:text-[#120038] text-left text-sm">
+              {lpTokensAmountToBurn + "  " + "LP"}
+            </p>
+          }
         </div>
       </div>
 
