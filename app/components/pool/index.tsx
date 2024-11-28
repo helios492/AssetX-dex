@@ -77,7 +77,11 @@ export default function Pools() {
       // setRangePoolInfo([]);
     }
 
-  }, [initialPoolInfo, searchQuery, rangePoolInfo])
+  }, [initialPoolInfo, searchQuery, rangePoolInfo]);
+
+  const filteredPools = searchQuery ? poolsCards.filter((item)=>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ): poolsCards
 
   return (
     <>
@@ -212,7 +216,7 @@ export default function Pools() {
                 : "pools-list-scrollbar-desktop"
                 }`}
             >
-              {poolsCards.map((item: PoolCardProps, index: number) => (
+              {filteredPools.map((item: PoolCardProps, index: number) => (
                 <div key={index}>
                   <PoolSelection
                     tokenPair={item.name}
