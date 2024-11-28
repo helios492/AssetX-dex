@@ -1302,8 +1302,8 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
         }
         tokenSymbolA={
           inputEdited.inputType === InputEditedType.exactIn
-            ? selectedTokenB.tokenSymbol
-            : selectedTokenA.nativeTokenSymbol
+            ? selectedTokenA.nativeTokenSymbol
+            : selectedTokenB.tokenSymbol
         }
         tokenSymbolB={
           inputEdited.inputType === InputEditedType.exactIn
