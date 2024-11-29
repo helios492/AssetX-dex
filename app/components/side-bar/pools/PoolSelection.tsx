@@ -45,6 +45,7 @@ const PoolSelection = ({
   const [assetLiquidity, setAssetLiquidity] = useState<string>("");
   const [volume, setVolume] = useState<string>("0");
   const [fees, setFees] = useState<string>("0");
+  const [apr, setApr] = useState<string>("0");
 
   // let volume: string,
   //   fees: string,
@@ -78,7 +79,7 @@ const PoolSelection = ({
   }, [poolsTokenMetadata, tokenBalances]);
 
   useEffect(() => {
-    if(nativeToken && assetToken && usdcPrice){
+    if (nativeToken && assetToken && usdcPrice) {
       getLiquidity();
     }
 
@@ -87,8 +88,8 @@ const PoolSelection = ({
   const getVolume = async () => {
     const response = await axios.get(`/api/volume/?assetTokenId=${assetTokenId}`);
     let volume = 0;
-    response.data.data?.map((item)=>{
-      volume+=item.tokenAAmount * item.tokenAPrice
+    response.data.data?.map((item) => {
+      volume += item.tokenAAmount * item.tokenAPrice
     });
     setVolume(parseFloat(volume.toString()).toFixed(5));
   };
@@ -96,15 +97,15 @@ const PoolSelection = ({
   const getFees = async () => {
     const response = await axios.get(`/api/fee/?assetTokenId=${assetTokenId}`);
     let fees = 0;
-    response.data.data?.map((item)=>{
-      fees+=item.swapFee || 0
+    response.data.data?.map((item) => {
+      fees += item.swapFee || 0
     })
-    setFees(parseFloat((fees*1000000).toString()).toFixed(5));
+    setFees(parseFloat((fees * 1000000).toString()).toFixed(5));
   }
-  useEffect(()=>{
+  useEffect(() => {
     getVolume();
     getFees();
-  },[sortPeriod, assetTokenId])
+  }, [sortPeriod, assetTokenId])
 
   const getLiquidity = async () => {
     const nativeTokenPrice = await getPriceOfAssetFromNative("1");
@@ -166,6 +167,20 @@ const PoolSelection = ({
     }
   };
 
+  const totalAmount = Number(nativeLiquidity) + Number(assetLiquidity)
+
+  useEffect(() => {
+    if (sortPeriod === "24H") {
+      setApr((Number(fees) * 365 / totalAmount).toString())
+    } else if (sortPeriod === "7D") {
+      setApr((Number(fees) * 52 / totalAmount).toString())
+    } else if (sortPeriod === "30D") {
+      setApr((Number(fees) * 12 / totalAmount).toString())
+    }
+  }, [fees, totalAmount])
+
+
+
   return (
     <div className="relative flex flex-col first:items-start ">
       {/* Star Setting */}
@@ -221,15 +236,14 @@ const PoolSelection = ({
           <p>{"$" + nativeLiquidity + " / " + "$" + assetLiquidity}</p>
         </div>
         <div className="w-1/6">
-          <p>${volume}</p>
+          <p>${Number(volume) === 0 ? "0" : volume}</p>
         </div>
         <div className="w-1/6">
-          <p>{Number(fees)>0 ? "$" + fees + "e-6" : "$" + fees}</p>
+          <p>{Number(fees) === 0 ? "0" : Number(fees) > 0 ? "$" + fees + "e-6" : "$" + fees}</p>
         </div>
         <div className="w-1/6">
           <p>
-            {">"}
-            {"apr"}%
+            {apr === "0" ? "0" : parseFloat(apr).toFixed(5)}%
           </p>
         </div>
         <div className="flex flex-row justify-end items-center w-1/6">
