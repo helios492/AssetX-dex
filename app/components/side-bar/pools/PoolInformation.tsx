@@ -109,7 +109,9 @@ const getLiquidity = async () => {
     if(lpTokenId !== null){
       getNativeAndAssetTokensFromPool();
     }
-  },[lpTokenId])
+  },[lpTokenId]);
+
+  const share = parseFloat((Number(selectedTokenNativeValue?.tokenValue)/Number(nativeTokens) * 100).toString()).toFixed(5)
   
   useEffect(() => {
     if(selectedTokenAssetValue && selectedTokenNativeValue && usdcPrice){
@@ -144,7 +146,7 @@ const onWithdrawClick = () => {
       <div className="w-1/7" />
       <div className="w-1/7 py-4 ">
         <p>Your share</p>
-        <p className="text-white dark:text-[#5100FE] font-bold">$0</p>
+        <p className="text-white dark:text-[#5100FE] font-bold">{isNaN(Number(share)) ? 0 : share}%</p>
         <p className="text-transparent">Amount </p>
       </div>
       <div className="w-1/7 flex flex-row justify-end items-center self-center">
