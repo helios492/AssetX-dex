@@ -735,7 +735,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
         return { label: "Enter amount", disabled: true };
       }
 
-      if (selectedNativeTokenNumber.gt(tokenBalances.balance)) {
+      if (lpTokenId === null && selectedNativeTokenNumber.gt(tokenBalances.balance)) {
         return {
           label: `Insufficient ${selectedTokenA.nativeTokenSymbol} token amount`,
           disabled: true,
@@ -744,7 +744,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
 
       const fee = convertToBaseUnit(poolGasFee);
       console.log("fee", poolGasFee, fee, selectedNativeTokenNumber.plus(fee), tokenBalances.balance, selectedNativeTokenNumber.plus(fee).gt(tokenBalances.balance));
-      if (selectedNativeTokenNumber.plus(fee).gt(tokenBalances.balance)) {
+      if (lpTokenId === null && selectedNativeTokenNumber.plus(fee).gt(tokenBalances.balance)) {
         return {
           label: `Insufficient ${selectedTokenA.nativeTokenSymbol} token amount`,
           disabled: true,
@@ -753,7 +753,7 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
 
       const assetTokenBalance = new Decimal(selectedTokenB.assetTokenBalance?.replace(/[, ]/g, ""));
       const assetTokenBalnceFormatted = formatDecimalsFromToken(assetTokenBalance, selectedTokenB.decimals);
-      if (selectedAssetTokenNumber.gt(assetTokenBalnceFormatted)) {
+      if (lpTokenId === null && selectedAssetTokenNumber.gt(assetTokenBalnceFormatted)) {
         return {
           label: `Insufficient ${selectedTokenB.tokenSymbol} token amount`,
           disabled: true,
