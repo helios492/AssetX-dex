@@ -1331,11 +1331,11 @@ const AddPoolLiquidity: FC<AddPoolLiquidityProps> = ({ tokenBId }: AddPoolLiquid
         onClose={closeSuccessModal}
         contentTitle={"Pool successfully created"}
         tokenA={{
-          value: exactNativeTokenAddLiquidity,
+          value: selectedTokenNativeValue?.tokenValue,
           symbol: selectedTokenA.nativeTokenSymbol,
         }}
         tokenB={{
-          value: exactAssetTokenAddLiquidity,
+          value: selectedTokenAssetValue?.tokenValue,
           symbol: selectedTokenB.tokenSymbol,
         }}
         actionLabel={"added"}

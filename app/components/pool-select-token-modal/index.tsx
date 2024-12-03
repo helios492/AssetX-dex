@@ -97,6 +97,28 @@ const PoolSelectTokenModal: FC<PoolSelectTokenModalProps> = ({ open, title, sele
     token.assetTokenMetadata.symbol?.toLowerCase().includes(searchQuery.toLowerCase())
   ) : availablePoolTokenB;
 
+  filteredTokenList?.sort((a: any, b: any) => {
+    // Helper to normalize balance (removing commas and converting to number)
+    const parseBalance = (balance: any) => {
+        if (typeof balance === "string") {
+            return parseFloat(balance.replace(/,/g, ""));
+        }
+        return balance || 0;
+    };
+
+    const balanceA = parseBalance(a.tokenAsset?.balance);
+    const balanceB = parseBalance(b.tokenAsset?.balance);
+
+    // Prioritize tokens with balance > 0
+    if (balanceA > 0 && balanceB <= 0) return -1;
+    if (balanceA <= 0 && balanceB > 0) return 1;
+
+    // Sort alphabetically by symbol (case-insensitive)
+    const symbolA = a.assetTokenMetadata?.symbol?.toLowerCase() || "";
+    const symbolB = b.assetTokenMetadata?.symbol?.toLowerCase() || "";
+    return symbolA.localeCompare(symbolB);
+});
+
   const handlePoolAssetTokeData = (id: string, assetSymbol: string, decimals: string, assetTokenBalance: string) => {
     const assetTokenData = {
       tokenSymbol: assetSymbol,
