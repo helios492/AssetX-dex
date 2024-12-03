@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useRef, FC, useCallback } from "react";
+import { useState, useRef, FC, useCallback, useEffect } from "react";
 import classNames from "classnames";
 import { useAtom } from "jotai";
 import useClickOutside from "@/app/hooks/useClickOutside";
@@ -54,7 +54,6 @@ const SelectTokenModal: FC<SwapSelectTokenModalProps> = ({
   };
   const ref = useRef<HTMLDivElement>(null);
   const [isShowSelectTokenModal, setIsShowSelectTokenModal] = useAtom(showSelectTokenModalAtom);
-
   useClickOutside(ref, () => {
     if (isShowSelectTokenModal) setIsShowSelectTokenModal(TokenSelection.None);
   });
@@ -80,9 +79,31 @@ const SelectTokenModal: FC<SwapSelectTokenModalProps> = ({
     token.assetTokenMetadata.symbol?.toLowerCase().includes(searchQuery.toLowerCase())
   ) : tokensData;
 
+  filteredTokenList?.sort((a: any, b: any) => {
+    // Helper to normalize balance (removing commas and converting to number)
+    const parseBalance = (balance: any) => {
+        if (typeof balance === "string") {
+            return parseFloat(balance.replace(/,/g, ""));
+        }
+        return balance || 0;
+    };
+
+    const balanceA = parseBalance(a.tokenAsset?.balance);
+    const balanceB = parseBalance(b.tokenAsset?.balance);
+
+    // Prioritize tokens with balance > 0
+    if (balanceA > 0 && balanceB <= 0) return -1;
+    if (balanceA <= 0 && balanceB > 0) return 1;
+
+    // Sort alphabetically by symbol (case-insensitive)
+    const symbolA = a.assetTokenMetadata?.symbol?.toLowerCase() || "";
+    const symbolB = b.assetTokenMetadata?.symbol?.toLowerCase() || "";
+    return symbolA.localeCompare(symbolB);
+});
+
   const onSelectFavouriteToken = useCallback((tokenSymbol: string) => {
     const token: any = tokensData.find((item: any) => item.assetTokenMetadata.symbol?.toLowerCase() === tokenSymbol.toLowerCase())
-    if(!token) return;
+    if (!token) return;
     handleSelectToken({
       id: token.tokenId,
       assetSymbol: token.assetTokenMetadata.symbol,
@@ -202,12 +223,12 @@ const SelectTokenModal: FC<SwapSelectTokenModalProps> = ({
                     </div>
                     <div className="flex flex-col">
                       <p className="text-right text-[#b4d2ffaf] dark:text-[#120038] text-lg font-bold">
-                      {token.tokenId
-                        ? formatDecimalsFromToken(
-                          Number(token.tokenAsset.balance ? token.tokenAsset.balance.replace(/[, ]/g, "") : "0"),
-                          token.assetTokenMetadata.decimals
-                        )
-                        : token.tokenAsset.balance}
+                        {token.tokenId
+                          ? formatDecimalsFromToken(
+                            Number(token.tokenAsset.balance ? token.tokenAsset.balance.replace(/[, ]/g, "") : "0"),
+                            token.assetTokenMetadata.decimals
+                          )
+                          : token.tokenAsset.balance}
                       </p>
                       <div className="flex flex-row justify-center items-center gap-2">
                         <p className=" text-[#b4d2ffaf] dark:text-[#120038] text-sm">
